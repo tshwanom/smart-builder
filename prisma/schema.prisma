@@ -1,0 +1,304 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts     Account[]
+  sessions     Session[]
+  projects     Project[]
+  transactions Transaction[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String   @default("Untitled Project")
+  description String?
+  clientName  String?
+  address     String?
+  province    String?
+  city        String?
+  geometry    String // JSON string for SQLite compatibility
+  isUnlocked  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  country      Country?      @relation(fields: [countryId], references: [id])
+  countryId    String?
+  BOQRate      BOQRate[]
+  roofs        Roof[]
+
+  defaultBrickMaterialId String?
+  defaultBrickMaterial   Material?      @relation("ProjectDefaultBrick", fields: [defaultBrickMaterialId], references: [id])
+  wallTemplates          WallTemplate[]
+
+  @@index([userId])
+}
+
+model BOQRate {
+  id        String   @id @default(cuid())
+  projectId String
+  itemKey   String // Unique key: "category-itemname"
+  rate      Float // User override rate
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, itemKey])
+}
+
+// Supplier & Pricing System (Gemini Powered)
+
+model Supplier {
+  id        String   @id @default(cuid())
+  name      String
+  type      String? // "Hardware", "Brickyard", "Specialist"
+  website   String?
+  logoUrl   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branches SupplierBranch[]
+  prices   ProductPrice[]
+}
+
+model SupplierBranch {
+  id          String  @id @default(cuid())
+  supplierId  String
+  name        String? // e.g., "Builder's Warehouse Fourways"
+  province    String
+  city        String
+  address     String?
+  coordinates String? // JSON: {lat, lng}
+
+  supplier Supplier       @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  prices   ProductPrice[]
+
+  @@index([province, city])
+}
+
+model ProductPrice {
+  id          String    @id @default(cuid())
+  supplierId  String
+  branchId    String? // Optional: if price is specific to a branch
+  productName String
+  description String?
+  price       Float
+  currency    String    @default("ZAR")
+  unit        String? // "each", "m2", "pallet"
+  scrapedAt   DateTime  @default(now())
+  validUntil  DateTime?
+  url         String? // Link to product page
+
+  supplier Supplier        @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  branch   SupplierBranch? @relation(fields: [branchId], references: [id])
+
+  @@index([productName])
+}
+
+model ScannedQuotation {
+  id           String    @id @default(cuid())
+  imageUrl     String
+  rawData      String    @db.Text // JSON string of extraction result
+  status       String    @default("PENDING") // PENDING, PROCESSED, FAILED
+  merchantName String?
+  scanDate     DateTime?
+  totalAmount  Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  projectId   String
+  userId      String
+  amount      Int
+  currency    String   @default("ZAR")
+  status      String
+  paystackRef String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([userId])
+  @@index([paystackRef])
+}
+
+// Multi-Country Configuration System
+
+model Country {
+  id             String   @id @default(cuid())
+  code           String   @unique // ISO 3166-1 alpha-2 (ZA, KE, NG, GH, GB, AU)
+  name           String // "South Africa", "Kenya", etc.
+  currency       String // "ZAR", "KES", "NGN", "GHS", "GBP", "AUD"
+  currencySymbol String // "R", "KSh", "₦", "GH₵", "£", "$"
+  buildingCode   String // "SANS 10400", "Kenya Building Code 2020"
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  materials     Material[]
+  pricingTiers  PricingTier[]
+  projects      Project[]
+  wallTemplates WallTemplate[]
+
+  @@index([code])
+  @@index([active])
+}
+
+model Material {
+  id        String @id @default(cuid())
+  countryId String
+  category  String // "brick", "block", "roofing", "finish", "slab"
+  name      String // "Clay Stock Brick", "IBR Sheeting", "In-situ Concrete"
+
+  // Material specifications (JSON for flexibility)
+  specifications String // JSON: { dimensions: {length, width, height}, unitsPerM2, mortarRatio, etc. }
+
+  // Physical Dimensions (mm)
+  lengthMm         Float? @default(222)
+  widthMm          Float? @default(106)
+  heightMm         Float? @default(73)
+  jointThicknessMm Float? @default(10)
+
+  // BOQ calculation data
+  unitsPerM2  Float? // e.g., 55 bricks/m², 12.5 blocks/m²
+  mortarRatio String? // e.g., "1:4", "1:6"
+
+  // Metadata
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
+
+  wallLayers         WallLayer[]
+  defaultForProjects Project[]   @relation("ProjectDefaultBrick")
+
+  @@index([countryId])
+  @@index([category])
+  @@index([active])
+}
+
+model PricingTier {
+  id         String   @id @default(cuid())
+  countryId  String
+  minArea    Float // Minimum area in m²
+  maxArea    Float? // Maximum area in m² (null = unlimited)
+  pricePerM2 Float // Price per square meter in local currency
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
+
+  @@index([countryId])
+}
+
+model WallTemplate {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  countryId    String
+  projectId    String?
+  isSystem     Boolean  @default(false)
+  hatchPattern String   @default("SOLID") // SOLID, DIAGONAL, CONCRETE, CROSSHATCH
+  fillColor    String   @default("#808080") // Hex Code
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  layers WallLayer[]
+
+  country Country  @relation(fields: [countryId], references: [id])
+  project Project? @relation(fields: [projectId], references: [id])
+
+  @@index([countryId])
+  @@index([projectId])
+}
+
+model WallLayer {
+  id           String  @id @default(cuid())
+  templateId   String
+  materialId   String? // Null for air cavity
+  type         String // MASONRY, CAVITY, FINISH, MEMBRANE
+  thickness    Float // e.g., 110, 50, 15
+  isStructural Boolean @default(false) // TRUE = affects canvas width. FALSE = BOQ only.
+  sortOrder    Int
+
+  template WallTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  material Material?    @relation(fields: [materialId], references: [id])
+
+  @@index([templateId])
+  @@index([materialId])
+}
+
+model Roof {
+  id        String   @id @default(cuid())
+  projectId String
+  pitch     Float    @default(25.0)
+  overhang  Float    @default(600.0)
+  type      String   @default("hip") // hip, gable, etc.
+  footprint String? // JSON string: Vec2[] vertices of the roof baseline
+  geometry  String? // JSON string for cached geometry (vertices, faces)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}

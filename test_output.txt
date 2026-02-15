@@ -1,0 +1,7 @@
+Result: Generated
+Ridges: 1
+Hips: 3
+Valleys: 1
+Eaves: 4
+Bounding Box X: -0.6000000000000014 21.6
+RESULT: Complex geometry or disjoint. 

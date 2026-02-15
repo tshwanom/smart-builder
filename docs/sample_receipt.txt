@@ -1,0 +1,61 @@
+BUILDERS WAREHOUSE
+Sandton City, Johannesburg
+Tel: 011 555 1234
+VAT Reg: 4123456789
+
+================================
+Receipt #: BW-2026-00234
+Date: 09/02/2026
+Time: 14:32
+Cashier: Sarah M.
+================================
+
+ITEMS PURCHASED:
+
+Cement PPC 50kg
+SKU: CEM-PPC-50
+Qty: 15 @ R89.95
+                      R1,349.25
+
+Building Sand (bulk bag)
+SKU: SAND-BB-1000
+Qty: 2 @ R425.00
+                        R850.00
+
+Clay Bricks (1000 units)
+SKU: BRICK-CLAY-1000
+Qty: 1 @ R3,250.00
+                      R3,250.00
+
+Brickforce 3.7m Galvanized
+SKU: BF-GAL-37
+Qty: 20 @ R45.50
+                        R910.00
+
+Stone 19mm (bulk bag)
+SKU: STONE-19-BB
+Qty: 2 @ R485.00
+                        R970.00
+
+================================
+Subtotal:             R7,329.25
+VAT (15%):            R1,099.39
+--------------------------------
+TOTAL:                R8,428.64
+================================
+
+Payment Method: Card
+Card Type: Visa
+Last 4 digits: ****1234
+Auth Code: 789456
+
+================================
+Thank you for shopping at
+BUILDERS WAREHOUSE
+
+Save this receipt for returns
+Returns accepted within 30 days
+with original packaging
+
+www.builderwarehouse.co.za
+================================
