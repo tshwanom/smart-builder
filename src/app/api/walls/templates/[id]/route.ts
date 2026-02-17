@@ -3,10 +3,10 @@ import { prisma } from '@/lib/prisma'
 
 export async function PUT(
   req: NextRequest, 
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
     const body = await req.json()
     const { name, description, hatchPattern, fillColor, layers } = body
 
@@ -64,10 +64,10 @@ export async function PUT(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
     
     // Check if system template
     const template = await prisma.wallTemplate.findUnique({ where: { id } })

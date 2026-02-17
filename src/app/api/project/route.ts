@@ -47,7 +47,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Create project
-    // @ts-expect-error Types not yet updated
     const project = await prisma.project.create({
       data: {
         userId: user.id,

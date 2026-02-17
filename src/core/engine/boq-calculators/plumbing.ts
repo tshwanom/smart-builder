@@ -18,8 +18,8 @@ export const calculatePlumbing = (
     // Add point items
     Object.entries(counts).forEach(([type, count]) => {
         let name = 'Unknown Plumbing Item'
-        let unit = 'No.'
-        let category = 'Plumbing'
+        const unit = 'No.'
+        const category = 'Plumbing'
         
         switch(type) {
             case 'basin': name = 'Basin Mixer & Waste'; break;
@@ -33,7 +33,7 @@ export const calculatePlumbing = (
         
         items.push({
             id: `plumb-${type}`,
-            name,
+            item: name,
             quantity: count,
             unit,
             category,
@@ -68,7 +68,7 @@ export const calculatePlumbing = (
         
         items.push({
             id: 'plumb-pipe',
-            name: pipeName,
+            item: pipeName,
             quantity: Math.ceil(totalPipeLength),
             unit: 'm',
             category: 'Plumbing',
@@ -78,7 +78,7 @@ export const calculatePlumbing = (
         // Estimate fittings (approx 4 per point)
         items.push({
             id: 'plumb-fittings',
-            name: 'Assorted Fittings (Elbows, Tees, Connectors)',
+            item: 'Assorted Fittings (Elbows, Tees, Connectors)',
             quantity: points.length * 4,
             unit: 'No.',
             category: 'Plumbing',

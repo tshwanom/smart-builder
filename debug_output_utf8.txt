@@ -1,4 +1,0 @@
---- Running Detection ---
-Found 2 rooms
-Room 0: Area=100.00, ID=room-node-0-node-1-node-2-node-3
-Room 1: Area=100.00, ID=room-node-0-node-3-node-4-node-5

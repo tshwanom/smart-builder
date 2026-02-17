@@ -1,0 +1,67 @@
+﻿=== TEST 1: Rectangle (4m ├ù 3m) ===
+[Skeleton] 4 vertices, 4 bisector rays computed
+[Skeleton] 4 faces, 4 arcs
+Faces: 4, Arcs: 4
+  F0: (1.00,0.00) (3.00,0.00) (2.00,1.00)
+  F1: (4.00,0.00) (4.00,3.00) (2.50,1.50)
+  F2: (2.00,2.00) (3.00,3.00) (1.00,3.00)
+  F3: (0.00,0.00) (1.50,1.50) (0.00,3.00)
+  EXPECTED: 4 faces, each a trapezoid/triangle
+
+=== TEST 2: L-Shape ===
+[Skeleton] 6 vertices, 6 bisector rays computed
+[Skeleton] 6 faces, 9 arcs
+Faces: 6, Arcs: 9
+  F0: (2.00,0.00) (5.00,0.00) (3.50,1.50)
+  F1: (5.00,1.00) (5.00,3.00) (4.00,2.00)
+  F2: (5.00,3.00) (8.00,3.00) (6.50,4.50)
+  F3: (8.00,3.00) (8.00,6.00) (6.50,4.50)
+  F4: (4.00,4.00) (5.50,5.50) (5.00,6.00) (2.00,6.00)
+  F5: (0.00,0.00) (2.50,2.50) (0.00,5.00)
+  EXPECTED: 6 faces (one per edge), valley at internal corner (5,3)
+
+=== TEST 3: User Building (meters) ===
+[Skeleton] 12 vertices, 12 bisector rays computed
+[Skeleton] 12 faces, 20 arcs
+Faces: 12, Arcs: 20
+  F0: (11.00,1.00) (11.00,-2.00) (13.00,0.00) (11.50,1.50)
+  F1: (11.00,-2.00) (15.00,-2.00) (13.00,0.00)
+  F2: (15.00,-2.00) (15.00,2.00) (15.00,2.00) (13.00,0.00)
+  F3: (15.00,2.00) (17.00,2.00) (16.00,3.00) (15.00,2.00)
+  F4: (16.50,3.50) (17.00,4.00) (17.00,7.00) (15.00,5.00)
+  F5: (17.00,7.00) (15.00,7.00) (14.00,6.00) (15.00,5.00)
+  F6: (15.00,7.00) (15.00,9.00) (13.00,7.00) (14.00,6.00)
+  F7: (15.00,9.00) (11.00,9.00) (13.00,7.00)
+  F8: (11.00,9.00) (11.00,7.00) (12.00,6.00) (13.00,7.00)
+  F9: (11.50,5.50) (10.00,7.00) (8.00,7.00) (10.50,4.50)
+  F10: (9.50,3.50) (8.00,5.00) (8.00,2.00)
+  F11: (10.50,2.50) (9.50,3.50) (8.00,2.00) (10.00,2.00)
+  EXPECTED: 12 faces (one per edge), no holes
+
+=== TEST 4: L-Shape (Screenshot Approximation) ===
+node.exe : [Skeleton] Vertex 2 (5,8) ÔÇö no valid termination found, projecting
+At C:\Program Files\nodejs\npx.ps1:29 char:3
++   & $NODE_EXE $NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([Skeleton] Vert...und, projecting:String) [], RemoteExcep 
+   tion
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[Skeleton] 6 vertices, 6 bisector rays computed
+[Skeleton] 6 faces, 10 arcs
+Faces: 6, Arcs: 10
+  F0: (0.00,0.00) (5.00,0.00) (2.50,2.50)
+  F1: (5.00,0.00) (5.00,5.00) (6.00,6.00) (6.00,6.00) (2.50,2.50)
+  F2: (5.00,8.00) (8.00,8.00) (8.50,8.50) (7.00,10.00)
+  F3: (8.50,8.50) (9.00,9.00) (9.00,12.00) (7.00,10.00)
+  F4: (5.00,8.00) (7.00,10.00) (5.00,12.00) (1.00,12.00)
+  F5: (0.00,12.00) (0.00,5.00) (1.00,4.00) (4.50,7.50)
+  EXPECTED: 6 faces, valley from concave corner
+
+=== VALIDATION ===
+Rect: totalFaceArea=6.50, per face: [1.00, 2.25, 1.00, 2.25]
+L-Shape: totalFaceArea=17.75, per face: [2.25, 1.00, 2.25, 2.25, 3.75, 6.25]
+User: totalFaceArea=37.75, per face: [3.75, 4.00, 4.00, 1.00, 3.75, 3.00, 3.00, 4.00, 3.00, 4.00, 2.25, 2.00]
+L-User: totalFaceArea=51.25, per face: [6.25, 6.25, 3.75, 3.75, 12.00, 19.25]
+
+Written to skeleton_debug_output.txt

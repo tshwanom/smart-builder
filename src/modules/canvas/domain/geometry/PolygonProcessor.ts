@@ -1,5 +1,5 @@
 import polygonClipping from 'polygon-clipping';
-import { Point } from '../../../application/types';
+import { Point } from '../../application/types';
 
 export class PolygonProcessor {
     /**
@@ -273,130 +273,166 @@ export class PolygonProcessor {
         }
 
         // 2. Reconstruct polygons
-        return polygons.map((poly, polyIdx) => {
-            return poly.map((_, ptIdx) => {
-                // Find original index
-                // We need to match the specific point instance. 
-                // Since we iterated in order, we can just reconstruct the linear index?
-                // Actually easier: just re-run the layout or store it better.
-                // Let's optimize: 'allPoints' stores source indices.
-                // But we need to map back efficiently.
-                
-                // Brute force verify:
-                // We know allPoints[k] corresponds to polygons[polyIdx][ptIndex] if we track k.
-                // Let's do a linear walk since order is preserved.
-                 return { x: 0, y: 0 }; // Placeholder, see logic below
+        let k = 0;
+        return polygons.map((poly) => {
+            return poly.map(() => {
+                const newPoint = mergedPoints.get(k);
+                k++;
+                return newPoint || { x: 0, y: 0 };
             });
         });
     }
 
     /**
      * Merges multiple polygons into a single set of non-overlapping polygons (Union).
-     * Uses vertex welding to ensure adjacency.
+     * Uses polygon-clipping library with validation.
      */
     static union(polygons: Point[][]): Point[][] {
-        if (polygons.length === 0) return [];
-        if (polygons.length === 1) return [this.cleanPolygon(polygons[0])];
-
-        // 1. Determine Precision
-        const sample = polygons[0][0];
-        const isMillimeters = Math.abs(sample.x) > 500 || Math.abs(sample.y) > 500;
-        const weldTolerance = isMillimeters ? 2 : 0.002; // 2mm weld
-        const snapPrecision = isMillimeters ? 1 : 0.001;
-
-        // 2. Weld Vertices
-        // Iterate and cluster
-        const inputs = JSON.parse(JSON.stringify(polygons)) as Point[][]; // Deep copy
+        if (!polygons.length) return [];
         
-        const allPts: {x:number, y:number, pIdx:number, iIdx:number}[] = [];
-        inputs.forEach((p, pIdx) => p.forEach((pt, iIdx) => allPts.push({ x: pt.x, y: pt.y, pIdx, iIdx })));
+        // Validate and convert
+        const validPolys = polygons
+            .map(poly => {
+                 // Ensure enough points (triangle minimum), and snap to grid for robustness
+                 let pts = poly.map(p => ({...p})) // Clone
+                 // Heuristic: If coordinates are large (>500), snap to integer (1mm).
+                 // If small (meters), snap to 0.001 (1mm).
+                 const isMM = pts.some(p => Math.abs(p.x) > 500)
+                 const precision = isMM ? 1 : 0.001
+                 
+                 pts = this.snapPoints(this.cleanPolygon(pts, precision), precision)
+                 
+                 if (pts.length < 3) return null
+                 return [pts.map(p => [p.x, p.y] as [number, number])] // Polygon = [OuterRing]
+            })
+            .filter(p => p !== null) as import('polygon-clipping').Polygon[]
 
-        const assigned = new Uint8Array(allPts.length);
-        
-        for(let i=0; i<allPts.length; i++) {
-            if(assigned[i]) continue;
+        if (validPolys.length === 0) return []
+
+        try {
+            const result = polygonClipping.union(...(validPolys as unknown as [import('polygon-clipping').Geom, ...import('polygon-clipping').Geom[]])); 
             
-            const clusterIndices = [i];
-            let sx = allPts[i].x;
-            let sy = allPts[i].y;
-            assigned[i] = 1;
-
-            for(let j=i+1; j<allPts.length; j++) {
-                if(assigned[j]) continue;
-                const dx = allPts[i].x - allPts[j].x;
-                const dy = allPts[i].y - allPts[j].y;
-                if(dx*dx + dy*dy < weldTolerance*weldTolerance) {
-                    clusterIndices.push(j);
-                    sx += allPts[j].x;
-                    sy += allPts[j].y;
-                    assigned[j] = 1;
+            // Convert back
+            const output: Point[][] = [];
+            for (const poly of result) {
+                if (poly.length > 0) {
+                    const ring = poly[0];
+                    const converted: Point[] = ring.map((coord: [number, number]) => ({ x: coord[0], y: coord[1] }));
+                    const cleaned = this.cleanPolygon(converted, 0.001)
+                    if (cleaned.length >= 3) output.push(cleaned);
                 }
             }
+            return output;
+        } catch (e) {
+            console.warn('[PolygonProcessor] Union failed', e)
+            return []
+        }
+    }
 
-            const ax = sx / clusterIndices.length;
-            const ay = sy / clusterIndices.length;
+    /**
+     * Incremental polygon union — merges one polygon at a time.
+     * Much more reliable than batch union for many overlapping shapes.
+     * Coordinates are snapped to 1mm grid before processing.
+     */
+    static incrementalUnion(polygons: Point[][]): Point[][] {
+        if (polygons.length === 0) return []
 
-            for(const idx of clusterIndices) {
-                const info = allPts[idx];
-                inputs[info.pIdx][info.iIdx] = { x: ax, y: ay };
+        // Detect coordinate scale
+        const isMM = polygons.some(poly => poly.some(p => Math.abs(p.x) > 500))
+        const precision = isMM ? 1 : 0.001
+
+        // Prepare: snap + clean all input polygons
+        const prepared: import('polygon-clipping').Polygon[] = []
+        for (const poly of polygons) {
+            let pts = this.snapPoints(poly.map(p => ({...p})), precision)
+            pts = this.cleanPolygon(pts, precision)
+            if (pts.length < 3) continue
+            prepared.push([pts.map(p => [p.x, p.y] as [number, number])])
+        }
+
+        if (prepared.length === 0) return []
+        if (prepared.length === 1) {
+            const ring = prepared[0][0]
+            return [ring.map(c => ({ x: c[0], y: c[1] }))]
+        }
+
+        // Incrementally accumulate union
+        let accumulated: import('polygon-clipping').MultiPolygon = [prepared[0]]
+
+        for (let i = 1; i < prepared.length; i++) {
+            try {
+                accumulated = polygonClipping.union(
+                    accumulated as unknown as import('polygon-clipping').Geom,
+                    prepared[i] as unknown as import('polygon-clipping').Geom
+                ) as import('polygon-clipping').MultiPolygon
+            } catch (e) {
+                console.warn(`[PolygonProcessor] Incremental union failed at polygon ${i}`, e)
+                // Skip this polygon and continue
             }
         }
 
-        // 3. Prepare for clipping
-        const clipInputs: import('polygon-clipping').Polygon[] = inputs.map(p => {
-             // Snap to grid as final stabilizer
-             const snapped = this.snapPoints(p, snapPrecision);
-             
-             const points = snapped.map(pt => [pt.x, pt.y] as [number, number]);
-             if (points.length > 0) {
-                 const first = points[0];
-                 const last = points[points.length - 1];
-                 if (Math.abs(first[0] - last[0]) > 1e-9 || Math.abs(first[1] - last[1]) > 1e-9) {
-                     points.push(first);
-                 }
-             }
-             return [points];
-        });
-
-        // 4. Perform Union
-        const result = polygonClipping.union(clipInputs as import('polygon-clipping').Polygon[]); 
-
-        // 5. Convert back
-        const output: Point[][] = [];
-        for (const poly of result) {
+        // Convert result back to Point[][]
+        const output: Point[][] = []
+        for (const poly of accumulated) {
             if (poly.length > 0) {
-                const ring = poly[0];
-                const converted: Point[] = ring.map((coord: [number, number]) => ({ x: coord[0], y: coord[1] }));
-                output.push(this.cleanPolygon(converted, snapPrecision));
+                const ring = poly[0]
+                const converted: Point[] = ring.map((coord: number[]) => ({ x: coord[0], y: coord[1] }))
+                const cleaned = this.cleanPolygon(converted, precision)
+                if (cleaned.length >= 3) output.push(cleaned)
             }
         }
-        return output;
+
+        return output
     }
 
     /**
      * Intersects multiple polygons.
      */
     static intersection(poly1: Point[][], poly2: Point[][]): Point[][] {
-        if (!poly1.length || !poly2.length) return []
+        if (!poly1 || !poly2 || poly1.length === 0 || poly2.length === 0) return []
         
-        // Prepare inputs
-        const clipInputs: any[] = [
-            poly1.map(p => p.map(pt => [pt.x, pt.y])),
-            poly2.map(p => p.map(pt => [pt.x, pt.y]))
-        ]
-        
-        const result = polygonClipping.intersection(clipInputs[0], clipInputs[1]);
-        
-        // Convert back
-        const output: Point[][] = [];
-        for (const poly of result) {
-            if (poly.length > 0) {
-                const ring = poly[0];
-                const converted: Point[] = ring.map((coord: [number, number]) => ({ x: coord[0], y: coord[1] }));
-                output.push(this.cleanPolygon(converted));
-            }
+        // Convert and Validate with Snapping
+        const toGeom = (input: Point[][]) => {
+            return input.map(ring => {
+                let pts = ring.map(p => ({...p}))
+                const isMM = pts.some(p => Math.abs(p.x) > 500)
+                const precision = isMM ? 1 : 0.001
+                pts = this.snapPoints(this.cleanPolygon(pts, precision), precision)
+                
+                if (pts.length < 3) return null
+                return pts.map(p => [p.x, p.y] as [number, number])
+            }).filter(ring => ring !== null) as [number, number][][]
         }
-        return output;
+
+        const geom1 = toGeom(poly1)
+        const geom2 = toGeom(poly2)
+
+        if (geom1.length === 0 || geom2.length === 0) return []
+
+        // Wrap as MultiPolygons (Polygon[])
+        const mp1 = geom1.map(ring => [ring])
+        const mp2 = geom2.map(ring => [ring])
+        
+        try {
+            const result = polygonClipping.intersection(
+                mp1 as unknown as import('polygon-clipping').MultiPolygon, 
+                mp2 as unknown as import('polygon-clipping').MultiPolygon
+            );
+            
+            const output: Point[][] = [];
+            for (const poly of result) {
+                if (poly.length > 0) {
+                    const ring = poly[0];
+                    const converted: Point[] = ring.map((coord: [number, number]) => ({ x: coord[0], y: coord[1] }));
+                    const cleaned = this.cleanPolygon(converted, 0.001)
+                    if (cleaned.length >= 3) output.push(cleaned);
+                }
+            }
+            return output;
+        } catch (e) {
+             console.warn('[PolygonProcessor] Intersection failed', e)
+             return []
+        }
     }
     
     /**
@@ -406,21 +442,246 @@ export class PolygonProcessor {
         if (!poly1.length) return []
         if (!poly2.length) return poly1
         
-        // Prepare inputs
-        const subject = poly1.map(p => p.map(pt => [pt.x, pt.y]))
-        const clip = poly2.map(p => p.map(pt => [pt.x, pt.y]))
+        // Convert and Validate with Snapping
+        const toGeom = (input: Point[][]) => {
+            return input.map(ring => {
+                let pts = ring.map(p => ({...p}))
+                // Re-use snapping logic
+                const isMM = pts.some(p => Math.abs(p.x) > 500)
+                const precision = isMM ? 1 : 0.001
+                pts = this.snapPoints(this.cleanPolygon(pts, precision), precision)
+                
+                if (pts.length < 3) return null
+                return pts.map(p => [p.x, p.y] as [number, number])
+            }).filter(ring => ring !== null) as [number, number][][]
+        }
+
+        const geom1 = toGeom(poly1)
+        const geom2 = toGeom(poly2)
         
-        const result = polygonClipping.difference(subject as any, clip as any);
+        if (geom1.length === 0) return []
+        if (geom2.length === 0) return poly1
+
+        const mp1 = geom1.map(ring => [ring])
+        const mp2 = geom2.map(ring => [ring])
         
-        // Convert back
-        const output: Point[][] = [];
-        for (const poly of result) {
-            if (poly.length > 0) {
-                const ring = poly[0];
-                const converted: Point[] = ring.map((coord: [number, number]) => ({ x: coord[0], y: coord[1] }));
-                output.push(this.cleanPolygon(converted));
+        try {
+            const result = polygonClipping.difference(
+                mp1 as unknown as import('polygon-clipping').MultiPolygon, 
+                mp2 as unknown as import('polygon-clipping').MultiPolygon
+            );
+            
+            const output: Point[][] = [];
+            for (const poly of result) {
+                if (poly.length > 0) {
+                    const ring = poly[0];
+                    const converted: Point[] = ring.map((coord: [number, number]) => ({ x: coord[0], y: coord[1] }));
+                    const cleaned = this.cleanPolygon(converted, 0.001) // 1mm snap
+                    if (cleaned.length >= 3) output.push(cleaned);
+                }
+            }
+            return output;
+        } catch (e) {
+             console.warn('[PolygonProcessor] Difference failed', e)
+             return poly1 // Fallback
+        }
+    }
+    /**
+     * Decomposes a polygon into convex sub-polygons by splitting at reflex vertices.
+     * This produces fewer, better-shaped parts (rectangles) than ear clipping for architectural shapes.
+     */
+    static decompose(polygon: Point[]): Point[][] {
+        const cleaned = this.cleanPolygon(polygon);
+        if (cleaned.length < 3) return [];
+
+        if (this.isConvex(cleaned)) {
+            return [cleaned];
+        }
+
+        // Find a reflex vertex
+        const n = cleaned.length;
+        let reflexIndex = -1;
+        
+        for (let i = 0; i < n; i++) {
+            const p1 = cleaned[(i - 1 + n) % n];
+            const p2 = cleaned[i];
+            const p3 = cleaned[(i + 1) % n];
+            
+            // Cross product z-component
+            // Assumes CCW winding. If Right Turn (negative cross), it's reflex.
+            const cross = (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x);
+            if (cross < -1e-9) {
+                reflexIndex = i;
+                break;
             }
         }
-        return output;
+
+        if (reflexIndex === -1) return [cleaned];
+
+        // Split Polygon at Reflex Vertex
+        const vReflex = cleaned[reflexIndex];
+        let bestSplitIndex = -1;
+        let minDistSq = Infinity;
+        // let bestScore = Infinity; // Not used in the provided snippet
+
+        for (let i = 0; i < n; i++) {
+             // Cannot connect to self or immediate neighbors
+             if (i === reflexIndex || i === (reflexIndex - 1 + n) % n || i === (reflexIndex + 1) % n) continue;
+             
+             const vTarget = cleaned[i];
+             
+             // Check if diagonal is valid (internal)
+             if (this.isValidDiagonal(cleaned, reflexIndex, i)) {
+                 const distSq = (vReflex.x - vTarget.x)**2 + (vReflex.y - vTarget.y)**2;
+                 
+                 // Heuristic: Prefer shorter splits, but also prefer splits that align with axis?
+                 // For now simple distance.
+                 if (distSq < minDistSq) {
+                     minDistSq = distSq;
+                     bestSplitIndex = i;
+                 }
+             }
+        }
+
+        if (bestSplitIndex !== -1) {
+            const poly1: Point[] = [];
+            const poly2: Point[] = [];
+            
+            // Walk from reflex to split
+            let curr = reflexIndex;
+            while (curr !== bestSplitIndex) {
+                poly1.push(cleaned[curr]);
+                curr = (curr + 1) % n;
+            }
+            poly1.push(cleaned[bestSplitIndex]);
+            
+            // Walk from split to reflex
+            curr = bestSplitIndex;
+            while (curr !== reflexIndex) {
+                poly2.push(cleaned[curr]);
+                curr = (curr + 1) % n;
+            }
+            poly2.push(cleaned[reflexIndex]);
+            
+            return [...this.decompose(poly1), ...this.decompose(poly2)];
+        } else {
+             // Fallback
+             return [cleaned];
+        }
     }
+
+    private static isValidDiagonal(poly: Point[], i: number, j: number): boolean {
+        const p1 = poly[i];
+        const p2 = poly[j];
+        const mid = { x: (p1.x + p2.x)/2, y: (p1.y + p2.y)/2 };
+        
+        // 1. Ray casting: Midpoint must be inside
+        if (!this.isPointInPolygon(mid, poly)) return false;
+        
+        // 2. Check intersection with any other edge ONLY if strictly crossing
+        for (let k = 0; k < poly.length; k++) {
+            const e1 = poly[k];
+            const e2 = poly[(k+1)%poly.length];
+            
+            // Skip edges sharing endpoints with diagonal
+            if (k === i || k === j || (k+1)%poly.length === i || (k+1)%poly.length === j) continue;
+            
+            if (this.segmentsIntersectStrict(p1, p2, e1, e2)) return false;
+        }
+        return true;
+    }
+
+    static isConvex(polygon: Point[]): boolean {
+        if (polygon.length < 3) return false;
+        const n = polygon.length;
+        let hasPositive = false;
+        let hasNegative = false;
+        
+        for (let i = 0; i < n; i++) {
+            const p1 = polygon[(i - 1 + n) % n];
+            const p2 = polygon[i];
+            const p3 = polygon[(i + 1) % n];
+            
+            const cross = (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x);
+            if (cross > 1e-9) hasPositive = true;
+            if (cross < -1e-9) hasNegative = true;
+            
+            if (hasPositive && hasNegative) return false;
+        }
+        return true;
+    }
+
+    static isPointInPolygon(p: Point, poly: Point[]): boolean {
+        let inside = false;
+        for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+            const xi = poly[i].x, yi = poly[i].y;
+            const xj = poly[j].x, yj = poly[j].y;
+            
+            const intersect = ((yi > p.y) !== (yj > p.y)) &&
+                 (p.x < (xj - xi) * (p.y - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
+    }
+
+    /**
+     * Checks if two line segments (p1-p2) and (q1-q2) intersect strictly (excluding endpoints).
+     */
+    static segmentsIntersectStrict(p1: Point, p2: Point, q1: Point, q2: Point): boolean {
+        const orientation = (a: Point, b: Point, c: Point) => {
+            const val = (b.y - a.y) * (c.x - b.x) - (b.x - a.x) * (c.y - b.y);
+            if (Math.abs(val) < 1e-9) return 0; // colinear
+            return (val > 0) ? 1 : 2; // clock or counterclock wise
+        };
+
+        const o1 = orientation(p1, p2, q1);
+        const o2 = orientation(p1, p2, q2);
+        const o3 = orientation(q1, q2, p1);
+        const o4 = orientation(q1, q2, p2);
+
+        // General case
+        if (o1 !== o2 && o3 !== o4) return true;
+        
+        return false;
+    }
+
+    /**
+     * Checks if segment A is a sub-segment of segment B (collinear and contained).
+     */
+    static isSubSegment(segA: {start: Point, end: Point}, segB: {start: Point, end: Point}, tolerance: number): boolean {
+        // 1. Check collinearity (distance from points to line)
+        const d1 = this.pointToLineDist(segA.start, segB.start, segB.end);
+        const d2 = this.pointToLineDist(segA.end, segB.start, segB.end);
+        
+        if (d1 > tolerance || d2 > tolerance) return false;
+        
+        // 2. Check overlap
+        // Project onto B's axis
+        const dx = segB.end.x - segB.start.x;
+        const dy = segB.end.y - segB.start.y;
+        const lenSq = dx*dx + dy*dy;
+        if (lenSq < 1e-9) return false;
+        
+        // Dot product projection
+        const t1 = ((segA.start.x - segB.start.x) * dx + (segA.start.y - segB.start.y) * dy) / lenSq;
+        const t2 = ((segA.end.x - segB.start.x) * dx + (segA.end.y - segB.start.y) * dy) / lenSq;
+        
+        const minT = Math.min(t1, t2);
+        const maxT = Math.max(t1, t2);
+        
+        // Check if A is roughly within B [0, 1]
+        // Allow slight tolerance
+        return maxT > -0.01 && minT < 1.01;
+    }
+
+    private static pointToLineDist(p: Point, a: Point, b: Point): number {
+         const ab = {x: b.x - a.x, y: b.y - a.y}
+         const lenSq = ab.x*ab.x + ab.y*ab.y
+         if (lenSq < 1e-9) return Math.sqrt((p.x - a.x)**2 + (p.y - a.y)**2)
+         
+         const cross = Math.abs((b.x - a.x)*(a.y - p.y) - (a.x - p.x)*(b.y - a.y))
+         return cross / Math.sqrt(lenSq)
+    }
+    
+    // ... rest of file (isPointInPolygon, segmentsIntersectStrict can be removed or kept)
 }

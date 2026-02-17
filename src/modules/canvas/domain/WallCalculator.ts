@@ -1,4 +1,4 @@
-import { Wall, Opening, WallTemplate, WallLayer } from '../../application/types'
+import { Wall, Opening, WallTemplate, WallLayer } from '../application/types'
 
 export interface Quantities {
     bricks: Record<string, number> // materialId -> count

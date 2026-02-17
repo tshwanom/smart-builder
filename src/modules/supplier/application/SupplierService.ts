@@ -82,7 +82,7 @@ export class SupplierService {
                     type: 'Hardware'
                 },
                 update: {},
-                where: { id: 'placeholder' } // This won't work easily without unique constraint on website.
+                // where: { id: 'placeholder' } removed due to duplicate key error
             }) 
             
             // Workaround for non-unique website: Find first or create

@@ -178,14 +178,14 @@ export const RoomPropertiesPanel: React.FC<RoomPropertiesPanelProps> = ({ room }
             <p className="text-sm text-gray-600">Add a roof to this room:</p>
             <div className="flex gap-2">
               <button
-                onClick={() => createRoofPanel(room.id, 'pitched')}
+                onClick={() => createRoofPanel(room.id, room.storyId || 'ground', 'pitched', undefined)}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
               >
                 <Plus size={16} />
                 Pitched Roof
               </button>
               <button
-                onClick={() => createRoofPanel(room.id, 'flat')}
+                onClick={() => createRoofPanel(room.id, room.storyId || 'ground', 'flat', undefined)}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
               >
                 <Plus size={16} />

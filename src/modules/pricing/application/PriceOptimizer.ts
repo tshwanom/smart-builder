@@ -55,7 +55,7 @@ export class PriceOptimizerService {
       if (!supplieroffers.has(key)) {
         supplieroffers.set(key, {
           supplierName: price.supplier.name,
-          branchName: price.branch?.name,
+          branchName: price.branch?.name ?? undefined,
           items: [],
           totalCost: 0
         });

@@ -1,0 +1,39 @@
+﻿=== TEST 1: Rectangle (4m ├ù 3m) ===
+[Skeleton] 4 edges (0 convex, 4 concave)
+[Skeleton] 0 faces, 0 arcs
+Faces: 0, Arcs: 0
+  EXPECTED: 4 faces, each a trapezoid/triangle
+
+=== TEST 2: L-Shape ===
+[Skeleton] 6 edges (1 convex, 5 concave)
+[Skeleton] 0 faces, 0 arcs
+Faces: 0, Arcs: 0
+  EXPECTED: 6 faces (one per edge), valley at internal corner (5,3)
+
+=== TEST 3: User Building (meters) ===
+[Skeleton] 12 edges (4 convex, 8 concave)
+[Skeleton] 8 faces, 4 arcs
+Faces: 8, Arcs: 4
+  F0: (11.00,2.00) (13.00,4.00) (11.00,-2.00)
+  F2: (15.00,-2.00) (13.00,4.00) (15.00,2.00)
+  F3: (15.00,2.00) (12.50,4.50) (17.00,2.00)
+  F5: (17.00,7.00) (12.50,4.50) (15.00,7.00)
+  F6: (15.00,7.00) (13.00,5.00) (15.00,9.00)
+  F8: (11.00,9.00) (13.00,5.00) (11.00,7.00)
+  F9: (11.00,7.00) (13.50,4.50) (8.00,7.00)
+  F11: (8.00,2.00) (13.50,4.50) (11.00,2.00)
+  EXPECTED: 12 faces (one per edge), no holes
+
+=== TEST 4: L-Shape (Screenshot Approximation) ===
+[Skeleton] 6 edges (1 convex, 5 concave)
+[Skeleton] 0 faces, 0 arcs
+Faces: 0, Arcs: 0
+  EXPECTED: 6 faces, valley from concave corner
+
+=== VALIDATION ===
+Rect: totalFaceArea=0.00, per face: []
+L-Shape: totalFaceArea=0.00, per face: []
+User: totalFaceArea=24.50, per face: [4.00, 4.00, 2.50, 2.50, 2.00, 2.00, 3.75, 3.75]
+L-User: totalFaceArea=0.00, per face: []
+
+Written to skeleton_debug_output.txt

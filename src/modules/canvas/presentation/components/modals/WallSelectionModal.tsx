@@ -1,5 +1,5 @@
 import React from 'react'
-import { WallTemplate } from '../hooks/useWallTemplates'
+import { WallTemplate } from '../../hooks/useWallTemplates'
 import { X } from 'lucide-react'
 
 interface WallSelectionModalProps {

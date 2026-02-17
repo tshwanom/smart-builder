@@ -3,7 +3,7 @@
  * Defines standard sizes and properties for SA market
  */
 
-import { Opening } from '../boq-calculators/types'
+
 
 export const DOOR_LIBRARY = {
   // INTERNAL DOORS

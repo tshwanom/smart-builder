@@ -31,6 +31,7 @@ import { useWallTemplates } from '../hooks/useWallTemplates'
 import { StoryControlPanel } from './ui/StoryControlPanel'
 import RoofRenderer from './renderers/RoofRenderer'
 import { RoofFootprintEditor } from './renderers/RoofFootprintEditor'
+import Roof3DPreview from './Roof3DPreview'
 
 
 interface CanvasStageProps {
@@ -1178,6 +1179,9 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({ className }) => {
       
       {/* Story (Level) Manager */}
       <StoryControlPanel />
+
+      {/* 3D Roof Preview */}
+      <Roof3DPreview />
 
       {/* Info Display */}
       <StatusBar />

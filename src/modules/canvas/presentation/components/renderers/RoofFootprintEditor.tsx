@@ -32,6 +32,7 @@ export const RoofFootprintEditor = () => {
 
     const handleDragMove = (index: number, e: import('konva/lib/Node').KonvaEventObject<DragEvent>) => {
         const stage = e.target.getStage()
+        if (!stage) return
         const pointer = stage.getPointerPosition()
         if (!pointer) return
 

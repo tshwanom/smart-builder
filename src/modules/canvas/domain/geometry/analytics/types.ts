@@ -10,11 +10,12 @@ export interface RoofPlane {
   baselineHeight: number
   inwardNormal: Vec2
   slopeRise: number // tan(pitch)
-  trimmedPolygon?: Vec2[] // The final visible polygon
+  trimmedPolygons?: Vec2[][] // The final visible polygons (supports disjoint islands)
   area?: number
   // Geometric Equation: ax + by + cz + d = 0
   // Normal (a,b,c) points UP (out of roof)
   equation: { a: number, b: number, c: number, d: number }
+  footprintEdgeIndex?: number // NEW: Index of the footprint edge this plane corresponds to (for adjacency detection)
 }
 
 // Edge types derived from plane trimming
@@ -37,6 +38,7 @@ export interface RoofEdge {
 export interface RoofGeometry {
   planes: RoofPlane[]
   edges: RoofEdge[]
+  footprint?: Vec2[] // The unified footprint used to generate this roof
   
   // Specific geometry for rendering
   ridges: { start: Vec2; end: Vec2 }[]

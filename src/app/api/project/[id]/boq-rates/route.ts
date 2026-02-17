@@ -35,7 +35,6 @@ export async function GET(
     }
 
     // Fetch rates
-    // @ts-expect-error BOQRate not in client until regenerate
     const rates = await prisma.bOQRate.findMany({
       where: { projectId: id }
     })
@@ -91,7 +90,6 @@ export async function POST(
     }
 
     // Upsert rate
-    // @ts-expect-error BOQRate not in client until regenerate
     const updatedRate = await prisma.bOQRate.upsert({
       where: {
         projectId_itemKey: {

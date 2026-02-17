@@ -21,7 +21,16 @@ export const createConnectionSlice: StateCreator<CanvasStore, [], [], Connection
       height: properties?.height || (type === 'door' ? 2.1 : 1.2),
       position,
       sillHeight: properties?.sillHeight || (type === 'window' ? 1.0 : 0),
-      ...properties // Spread other properties like subtype, material etc.
+      
+      // Default parametric properties
+      panels: 1,
+      openPercentage: 0,
+      flipSide: 'left',
+      hingeType: 'standard',
+      frameThickness: 0.05,
+      openingAngle: 90,
+
+      ...properties // Spread overrides last
     }
     return { openings: [...state.openings, newOpening] }
   }),

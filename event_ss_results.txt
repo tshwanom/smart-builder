@@ -1,0 +1,125 @@
+﻿=== TEST 1: Rectangle (4m ├ù 3m) ===
+Faces: 4, Arcs: 5
+  F0: (0.00,0.00) (4.00,0.00) (2.50,1.50) (1.50,1.50)
+  F1: (4.00,0.00) (4.00,3.00) (2.50,1.50)
+  F2: (1.50,1.50) (2.50,1.50) (4.00,3.00) (0.00,3.00)
+  F3: (0.00,0.00) (1.50,1.50) (0.00,3.00)
+  EXPECTED: 4 faces, each a trapezoid/triangle
+
+=== TEST 2: L-Shape ===
+node.exe : C:\Users\
+Mobatly\Local Sites\
+mob-smart-builder\ap
+p\public\constructio
+n-calculator-main\co
+nstruction-calculato
+r-main\src\modules\c
+anvas\domain\geometr
+y\analytics\Straight
+Skeleton.ts:508
+At C:\Program Files\
+nodejs\npx.ps1:29 
+char:3
++   & $NODE_EXE 
+$NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~
+    + CategoryInfo  
+            : NotS  
+  pecified: (C:\U   
+ sers\Mobatl...S    
+keleton.ts:508:    
+String) [], Rem    
+oteException
+    + FullyQualifie 
+   dErrorId : Nati  
+  veCommandError
+ 
+            x: 
+curr.point.x + t * 
+curr.bisector!.x,
+                    
+                    
+         ^
+
+
+TypeError: Cannot 
+read properties of 
+null (reading 'x')
+    at 
+updateNodeAndEvents 
+(C:\Users\Mobatly\Lo
+cal Sites\mob-smart-
+builder\app\public\c
+onstruction-calculat
+or-main\construction
+-calculator-main\src
+\modules\canvas\doma
+in\geometry\analytic
+s\StraightSkeleton.t
+s:508:50)
+    at <anonymous> (
+C:\Users\Mobatly\Loc
+al Sites\mob-smart-b
+uilder\app\public\co
+nstruction-calculato
+r-main\construction-
+calculator-main\src\
+modules\canvas\domai
+n\geometry\analytics
+\StraightSkeleton.ts
+:130:5)
+    at 
+Array.forEach 
+(<anonymous>)
+    at computeStraig
+htSkeleton (C:\Users
+\Mobatly\Local Sites
+\mob-smart-builder\a
+pp\public\constructi
+on-calculator-main\c
+onstruction-calculat
+or-main\src\modules\
+canvas\domain\geomet
+ry\analytics\Straigh
+tSkeleton.ts:129:15)
+    at <anonymous> (
+C:\Users\Mobatly\Loc
+al Sites\mob-smart-b
+uilder\app\public\co
+nstruction-calculato
+r-main\construction-
+calculator-main\test
+_skeleton_debug.ts:4
+3:12)
+    at 
+Object.<anonymous> (
+C:\Users\Mobatly\Loc
+al Sites\mob-smart-b
+uilder\app\public\co
+nstruction-calculato
+r-main\construction-
+calculator-main\test
+_skeleton_debug.ts:1
+13:45)
+    at 
+Module._compile (nod
+e:internal/modules/c
+js/loader:1554:14)
+    at 
+Object.transformer (
+C:\Users\Mobatly\App
+Data\Roaming\npm\nod
+e_modules\tsx\dist\r
+egister-D46fvsV_.cjs
+:3:1104)
+    at Module.load (
+node:internal/module
+s/cjs/loader:1289:32
+)
+    at 
+Function._load (node
+:internal/modules/cj
+s/loader:1108:12)
+
+Node.js v22.14.0

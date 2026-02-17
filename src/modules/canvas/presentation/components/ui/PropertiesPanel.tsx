@@ -953,8 +953,10 @@ const PlumbingProperties: React.FC<{ point: PlumbingPoint, update: (id: string, 
 
 // Add Roof Section Component
 const AddRoofSection: React.FC<{ roomId: string }> = ({ roomId }) => {
-  const { createRoofPanel, roofPanels } = useCanvasStore()
+  const { createRoofPanel, roofPanels, rooms } = useCanvasStore()
   const hasRoof = roofPanels.some(panel => panel.roomId === roomId)
+  const room = rooms.find(r => r.id === roomId)
+  const storyId = room?.storyId || 'ground'
 
   return (
     <div className="border-t border-slate-200 pt-4 mt-4">
@@ -968,7 +970,7 @@ const AddRoofSection: React.FC<{ roomId: string }> = ({ roomId }) => {
              <label className="relative inline-flex items-center cursor-pointer">
                 <input 
                   type="checkbox" 
-                  checked={useCanvasStore.getState().rooms.find(r => r.id === roomId)?.hasRoof ?? true}
+                  checked={room?.hasRoof ?? true}
                   onChange={(e) => useCanvasStore.getState().updateRoom(roomId, { hasRoof: e.target.checked })}
                   className="sr-only peer"
                 />
@@ -986,14 +988,14 @@ const AddRoofSection: React.FC<{ roomId: string }> = ({ roomId }) => {
           <p className="text-xs text-slate-600">Add a separate roof panel (optional):</p>
           <div className="grid grid-cols-2 gap-2">
             <button
-              onClick={() => createRoofPanel(roomId, 'pitched')}
+              onClick={() => createRoofPanel(roomId, storyId, 'pitched', undefined)}
               className="flex items-center justify-center gap-2 px-3 py-2 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
             >
               <Home size={14} />
               Pitched
             </button>
             <button
-              onClick={() => createRoofPanel(roomId, 'flat')}
+              onClick={() => createRoofPanel(roomId, storyId, 'flat', undefined)}
               className="flex items-center justify-center gap-2 px-3 py-2 bg-slate-600 text-white text-sm rounded hover:bg-slate-700 transition-colors"
             >
               <Layers size={14} />

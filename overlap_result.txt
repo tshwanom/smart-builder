@@ -1,0 +1,8 @@
+﻿=== Face F4 intersection with L-shape ===
+Result: [[[[0,6],[3,3],[6.5,4.5],[8,6],[0,6]]]]
+
+F4Ôê®F2 overlap: [[[[4,4],[4.4,3.6],[6.5,4.5],[4,4]]]]
+Overlap area: 0.6000
+
+F4Ôê®F1 overlap: [[[[3,3],[4.4,3.6],[4,4],[3,3]]]]
+Overlap area: 0.4000

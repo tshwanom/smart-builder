@@ -21,30 +21,48 @@ export interface SkeletonResult {
   arcs: SkeletonArc[]
 }
 
-// Doubly linked list node for the active polygon
+// ═══════════════════════════════════════════════════
+// SSNode
+//
+// CRITICAL DESIGN: bisectors are NEVER computed from node.point positions.
+// Instead each node stores leftEdgeId and rightEdgeId — the indices of the
+// two original polygon edges whose angle bisector this node sits on.
+// The bisector velocity is recomputed from those original edge directions
+// using bisectorFromEdges(). This guarantees locked 45° angles always.
+//
+// Propagation rules (never lose the angle):
+//   EDGE COLLAPSE (V, V_next → newNode):
+//     newNode.leftEdgeId  = V.leftEdgeId
+//     newNode.rightEdgeId = V_next.rightEdgeId
+//
+//   SPLIT (reflex V hits edge opp→oppNext → nodeA, nodeB):
+//     nodeA.leftEdgeId  = V.leftEdgeId       nodeA.rightEdgeId = opp.rightEdgeId
+//     nodeB.leftEdgeId  = opp.leftEdgeId     nodeB.rightEdgeId = V.rightEdgeId
+// ═══════════════════════════════════════════════════
 class SSNode {
-  id: number // Corresponds to the original edge index starting at this vertex
+  id: number
   point: Vec2
-  
-  // Linked list pointers
-  prev!: SSNode 
+
+  prev!: SSNode
   next!: SSNode
 
-  // Geometry cache
-  bisector: Vec2 | null = null 
-  
-  // State
-  isActive: boolean = true
+  bisector: Vec2 | null = null
 
-  // Event tracking
+  // ── LOCKED EDGE TRACKING ─────────────────────────
+  leftEdgeId: number   // original edge index incoming to this vertex
+  rightEdgeId: number  // original edge index outgoing from this vertex
+  // ─────────────────────────────────────────────────
+
+  isActive: boolean = true
   EdgeEvent: SkeletonEvent | null = null
   SplitEvent: SkeletonEvent | null = null
-  
   creationTime: number = 0
 
-  constructor(point: Vec2, id: number, time: number = 0) {
+  constructor(point: Vec2, id: number, leftEdgeId: number, rightEdgeId: number, time: number = 0) {
     this.point = point
     this.id = id
+    this.leftEdgeId  = leftEdgeId
+    this.rightEdgeId = rightEdgeId
     this.creationTime = time
   }
 }
@@ -55,8 +73,8 @@ interface SkeletonEvent {
   type: EventType
   time: number
   point: Vec2
-  v?: SSNode 
-  oppositeEdge?: SSNode 
+  v?: SSNode
+  oppositeEdge?: SSNode
 }
 
 // ═══════════════════════════════════════════════════
@@ -67,273 +85,179 @@ export function computeStraightSkeleton(polygon: Vec2[]): SkeletonResult {
   const n = polygon.length
   if (n < 3) return { faces: [], arcs: [] }
 
-  // 1. Initialize Active Polygon (Doubly Linked List)
   const nodes: SSNode[] = []
 
-  // Ensure CCW winding
-  if (signedArea(polygon) < 0) {
-    polygon.reverse()
-  }
+  if (signedArea(polygon) < 0) polygon.reverse()
 
   for (let i = 0; i < n; i++) {
-    const node = new SSNode(polygon[i], i)
+    // leftEdgeId = incoming edge = (i-1+n)%n, rightEdgeId = outgoing edge = i
+    const node = new SSNode(polygon[i], i, (i - 1 + n) % n, i)
     nodes.push(node)
     if (i > 0) {
       nodes[i - 1].next = node
       node.prev = nodes[i - 1]
     }
   }
-  // Close loop
   nodes[n - 1].next = nodes[0]
   nodes[0].prev = nodes[n - 1]
 
-  // Output collectors
   const outputArcs: SkeletonArc[] = []
-  
-  // 2. Priority Queue for Events
   const eventQueue: SkeletonEvent[] = []
-
-  // 3. Initial computation
   const activeNodes = [...nodes]
-  
-  // Pass 1: Compute all bisectors
-  activeNodes.forEach(node => {
-    computeNodeBisector(node)
-  })
-  
-  // Pass 2: Compute all events (Time = 0)
-  activeNodes.forEach(node => computeNodeEvents(node, nodes, eventQueue, 0))
 
-  // 4. Process Events
+  // Compute all bisectors from locked edge directions
+  activeNodes.forEach(node => {
+    node.bisector = bisectorFromEdges(node.leftEdgeId, node.rightEdgeId, polygon)
+    console.log(`INIT Node ${node.id}: Pt(${node.point.x.toFixed(2)},${node.point.y.toFixed(2)}) edges(${node.leftEdgeId},${node.rightEdgeId}) B(${node.bisector.x.toFixed(3)},${node.bisector.y.toFixed(3)})`)
+  })
+
+  activeNodes.forEach(node => computeNodeEvents(node, nodes, eventQueue, polygon, 0))
+
   let loopSafe = 0
-  const loopLimit = n * 20 // Safety break
+  const loopLimit = n * 20
+  let currentTime = 0
 
   while (eventQueue.length > 0 && loopSafe++ < loopLimit) {
-    // Sort desc by time so we can pop the smallest
     eventQueue.sort((a, b) => {
       const diff = b.time - a.time
       if (Math.abs(diff) < 1e-6) {
-        // Equal time: Prioritize SPLIT over EDGE
-        // We found EDGE-first caused dropped events.
-        // So we want SPLIT to be popped FIRST.
-        // Put SPLIT at END of array.
-        // So [EDGE, SPLIT].
-        // So EDGE < SPLIT.
-        // If a=EDGE, b=SPLIT. a before b. return -1.
-        
         if (a.type === 'EDGE' && b.type === 'SPLIT') return -1
         if (a.type === 'SPLIT' && b.type === 'EDGE') return 1
         return 0
       }
       return diff
-    }) 
+    })
     const evt = eventQueue.pop()!
+    console.log(`POP ${evt.type} T=${evt.time.toFixed(6)}`)
 
-    if (!evt || evt.time < -1e-5) continue 
+    if (evt.time < currentTime) {
+      if (evt.time < currentTime - 1e-3) continue
+      evt.time = currentTime
+    }
+    if (evt.time > currentTime) currentTime = evt.time
 
     if (evt.type === 'EDGE') {
-      const v = evt.v!
+      const v    = evt.v!
       const next = v.next
-      
-      // Validity check: are these nodes still active?
+
       if (!v.isActive || !next.isActive) continue
-      
-      // Strict check: if (v.EdgeEvent !== evt) continue
-      // But if SPLIT refreshed the event with identical time, we should still process it.
+
       if (v.EdgeEvent !== evt) {
-         const current = v.EdgeEvent
-         if (!current || current.type !== 'EDGE' || Math.abs(current.time - evt.time) > 1e-6) {
-            continue
-         }
-      } 
+        const current = v.EdgeEvent
+        if (!current || current.type !== 'EDGE' || Math.abs(current.time - evt.time) > 1e-6) continue
+      }
 
-      // APPLY EDGE COLLAPSE
-      outputArcs.push({
-        start: v.point,
-        end: evt.point,
-        leftFace: v.prev.id,
-        rightFace: v.id
-      })
-      outputArcs.push({
-        start: next.point,
-        end: evt.point,
-        leftFace: v.id,
-        rightFace: next.id
-      })
+      outputArcs.push({ start: v.point,    end: evt.point, leftFace: v.leftEdgeId,  rightFace: v.rightEdgeId })
+      outputArcs.push({ start: next.point, end: evt.point, leftFace: next.leftEdgeId, rightFace: next.rightEdgeId })
 
-      // Update Topology
-      const prevNode = v.prev
+      const prevNode     = v.prev
       const nextNextNode = next.next
 
-      // Special Case: Triangle collapse (3 nodes left in this loop)
       if (prevNode === nextNextNode) {
-        // The last 3 nodes collapse to a single point (peak)
-        outputArcs.push({
-          start: prevNode.point,
-          end: evt.point,
-          leftFace: next.id,
-          rightFace: prevNode.id
-        })
-        
-        // Deactivate all
-        v.isActive = false
-        next.isActive = false
-        prevNode.isActive = false
-        continue // Loop closed
+        outputArcs.push({ start: prevNode.point, end: evt.point, leftFace: prevNode.leftEdgeId, rightFace: prevNode.rightEdgeId })
+        v.isActive = false; next.isActive = false; prevNode.isActive = false
+        continue
       }
 
-      // Mark collapsed nodes as inactive
-      v.isActive = false
-      next.isActive = false
+      v.isActive = false; next.isActive = false
 
-      const newNode = new SSNode(evt.point, next.id, evt.time) 
-      newNode.id = next.id 
+      // EDGE COLLAPSE: new node inherits leftEdgeId from V, rightEdgeId from V_next
+      const newNode = new SSNode(evt.point, next.id, v.leftEdgeId, next.rightEdgeId, evt.time)
+      newNode.bisector = bisectorFromEdges(newNode.leftEdgeId, newNode.rightEdgeId, polygon)
 
-      newNode.prev = prevNode
-      newNode.next = nextNextNode
-      prevNode.next = newNode
-      nextNextNode.prev = newNode
-      
-      // Recompute for involved nodes
-      computeNodeBisector(prevNode)
-      computeNodeBisector(newNode)
-      computeNodeBisector(nextNextNode)
-      
-      computeNodeEvents(prevNode, nodes, eventQueue, evt.time)
-      computeNodeEvents(newNode, nodes, eventQueue, evt.time)
-      computeNodeEvents(nextNextNode, nodes, eventQueue, evt.time)
+      newNode.prev = prevNode;     prevNode.next     = newNode
+      newNode.next = nextNextNode; nextNextNode.prev = newNode
+
+      computeNodeEvents(prevNode,     nodes, eventQueue, polygon, evt.time)
+      computeNodeEvents(newNode,      nodes, eventQueue, polygon, evt.time)
+      computeNodeEvents(nextNextNode, nodes, eventQueue, polygon, evt.time)
+
+      checkAndCollapseDegenerate(newNode, outputArcs)
 
     } else if (evt.type === 'SPLIT') {
-      const v = evt.v!
-      const opp = evt.oppositeEdge! 
-      
+      const v   = evt.v!
+      const opp = evt.oppositeEdge!
+
       if (!v.isActive) continue
-      
-      // If target edge is gone, recompute!
+
       if (opp && !opp.isActive) {
-         if (v.SplitEvent === evt) {
-            v.SplitEvent = null
-         }
-         computeNodeEvents(v, nodes, eventQueue, evt.time)
-         continue
+        if (v.SplitEvent === evt) v.SplitEvent = null
+        computeNodeEvents(v, nodes, eventQueue, polygon, evt.time)
+        continue
       }
 
-      // Relaxed check for SPLIT as well
       if (v.SplitEvent !== evt) {
-         const current = v.SplitEvent
-         if (!current || current.type !== 'SPLIT' || Math.abs(current.time - evt.time) > 1e-6) {
-            continue
-         }
+        const current = v.SplitEvent
+        if (!current || current.type !== 'SPLIT' || Math.abs(current.time - evt.time) > 1e-6) continue
       }
 
-      outputArcs.push({
-        start: v.point,
-        end: evt.point,
-        leftFace: v.prev.id,
-        rightFace: v.id
-      })
-
-      // Deactivate v
+      outputArcs.push({ start: v.point, end: evt.point, leftFace: v.leftEdgeId, rightFace: v.rightEdgeId })
       v.isActive = false
 
-      const pt = evt.point
-      const oppNext = opp.next
-      
+      const pt        = evt.point
+      const oppNext   = opp.next
       const distStart = Math.sqrt(distSq(pt, opp.point))
-      const distEnd = Math.sqrt(distSq(pt, oppNext.point))
-      const zeroTol = 1e-3
+      const distEnd   = Math.sqrt(distSq(pt, oppNext.point))
+      const zeroTol   = 1e-3
 
-      // Node A (links vPrev -> A -> oppNext)
-      // If pt is at End of Edge (oppNext), A->oppNext is 0 length. Skip A.
       let nodeA: SSNode | null = null
       if (distEnd > zeroTol) {
-         nodeA = new SSNode(pt, opp.id, evt.time)
-         
-         const vPrev = v.prev
-         vPrev.next = nodeA
-         nodeA.prev = vPrev
-         nodeA.next = oppNext
-         oppNext.prev = nodeA
-         
-         computeNodeBisector(vPrev)
-         computeNodeBisector(nodeA)
-         computeNodeBisector(oppNext)
-         
-         computeNodeEvents(vPrev, nodes, eventQueue, evt.time)
-         computeNodeEvents(nodeA, nodes, eventQueue, evt.time)
-         // oppNext events handled below? No, need to handle here if A exists
+        // SPLIT nodeA: left=V.leftEdgeId, right=opp.rightEdgeId
+        nodeA = new SSNode(pt, opp.id, v.leftEdgeId, opp.rightEdgeId, evt.time)
+        nodeA.bisector = bisectorFromEdges(nodeA.leftEdgeId, nodeA.rightEdgeId, polygon)
+
+        const vPrev = v.prev
+        vPrev.next = nodeA;   nodeA.prev  = vPrev
+        nodeA.next = oppNext; oppNext.prev = nodeA
+
+        computeNodeEvents(vPrev,   nodes, eventQueue, polygon, evt.time)
+        computeNodeEvents(nodeA,   nodes, eventQueue, polygon, evt.time)
+        computeNodeEvents(oppNext, nodes, eventQueue, polygon, evt.time)
       } else {
-         // Skip A. vPrev -> oppNext
-         const vPrev = v.prev
-         vPrev.next = oppNext
-         oppNext.prev = vPrev
-         
-         computeNodeBisector(vPrev)
-         computeNodeBisector(oppNext)
-         
-         computeNodeEvents(vPrev, nodes, eventQueue, evt.time)
+        const vPrev = v.prev
+        vPrev.next = oppNext; oppNext.prev = vPrev
+        computeNodeEvents(vPrev,   nodes, eventQueue, polygon, evt.time)
+        computeNodeEvents(oppNext, nodes, eventQueue, polygon, evt.time)
       }
-      
-      // Node B (links opp -> B -> vNext)
-      // If pt is at Start of Edge (opp), opp->B is 0 length. Link opp.prev -> B. Deactivate opp.
+
       let nodeB: SSNode | null = null
       if (distStart > zeroTol) {
-         nodeB = new SSNode(pt, v.id, evt.time)
-         
-         const vNext = v.next
-         opp.next = nodeB
-         nodeB.prev = opp
-         nodeB.next = vNext
-         vNext.prev = nodeB
-         
-         computeNodeBisector(opp)
-         computeNodeBisector(nodeB)
-         computeNodeBisector(vNext)
-         
-         computeNodeEvents(opp, nodes, eventQueue, evt.time)
-         computeNodeEvents(nodeB, nodes, eventQueue, evt.time)
-         computeNodeEvents(vNext, nodes, eventQueue, evt.time)
+        // SPLIT nodeB: left=opp.leftEdgeId, right=V.rightEdgeId
+        nodeB = new SSNode(pt, v.id, opp.leftEdgeId, v.rightEdgeId, evt.time)
+        nodeB.bisector = bisectorFromEdges(nodeB.leftEdgeId, nodeB.rightEdgeId, polygon)
+
+        const vNext = v.next
+        opp.next  = nodeB; nodeB.prev = opp
+        nodeB.next = vNext; vNext.prev = nodeB
+
+        computeNodeEvents(opp,   nodes, eventQueue, polygon, evt.time)
+        computeNodeEvents(nodeB, nodes, eventQueue, polygon, evt.time)
+        computeNodeEvents(vNext, nodes, eventQueue, polygon, evt.time)
       } else {
-         // Skip partial edge opp. Link opp.prev -> B.
-         // Effectively B replaces opp.
-         nodeB = new SSNode(pt, v.id, evt.time)
-         
-         const oppPrev = opp.prev
-         const vNext = v.next
-         
-         oppPrev.next = nodeB
-         nodeB.prev = oppPrev
-         nodeB.next = vNext
-         vNext.prev = nodeB
-         
-         opp.isActive = false // Deactivate opp!
-         
-         computeNodeBisector(oppPrev)
-         computeNodeBisector(nodeB)
-         computeNodeBisector(vNext)
-         
-         computeNodeEvents(oppPrev, nodes, eventQueue, evt.time)
-         computeNodeEvents(nodeB, nodes, eventQueue, evt.time)
-         computeNodeEvents(vNext, nodes, eventQueue, evt.time)
+        nodeB = new SSNode(pt, v.id, opp.leftEdgeId, v.rightEdgeId, evt.time)
+        nodeB.bisector = bisectorFromEdges(nodeB.leftEdgeId, nodeB.rightEdgeId, polygon)
+
+        const oppPrev = opp.prev
+        const vNext   = v.next
+        oppPrev.next = nodeB; nodeB.prev = oppPrev
+        nodeB.next   = vNext; vNext.prev = nodeB
+        opp.isActive = false
+
+        computeNodeEvents(oppPrev, nodes, eventQueue, polygon, evt.time)
+        computeNodeEvents(nodeB,   nodes, eventQueue, polygon, evt.time)
+        computeNodeEvents(vNext,   nodes, eventQueue, polygon, evt.time)
       }
-      
-      // Recompute oppNext for Loop A if needed
-      if (distEnd > zeroTol) {
-         computeNodeEvents(oppNext, nodes, eventQueue, evt.time)
-      } else {
-         computeNodeEvents(oppNext, nodes, eventQueue, evt.time)
-      }
+
+      if (nodeA && nodeA.isActive) checkAndCollapseDegenerate(nodeA, outputArcs)
+      if (nodeB && nodeB.isActive) checkAndCollapseDegenerate(nodeB, outputArcs)
     }
   }
 
-  // 5. Reconstruct Faces from Arcs
   const faces: SkeletonFace[] = []
-  
   for (let i = 0; i < n; i++) {
     const edgeArcs = outputArcs.filter(a => a.leftFace === i || a.rightFace === i)
-    if (edgeArcs.length === 0) continue 
-
-    const loop = buildFacePolygon(i, polygon[i], polygon[(i+1)%n], edgeArcs)
+    if (edgeArcs.length === 0) continue
+    const loop = buildFacePolygon(i, polygon[i], polygon[(i + 1) % n], edgeArcs)
     faces.push({ edgeIndex: i, polygon: loop })
   }
 
@@ -341,351 +265,277 @@ export function computeStraightSkeleton(polygon: Vec2[]): SkeletonResult {
 }
 
 // ═══════════════════════════════════════════════════
-// Helpers
+// bisectorFromEdges — THE LOCK
+//
+// Computes the bisector velocity from the TWO ORIGINAL POLYGON EDGE DIRECTIONS.
+// This is called once at node creation and never again from positions.
+// Since polygon[] never changes, bisectors are permanently correct.
+//
+// Solves: n_left · B = 1,  n_right · B = 1
+// where n_left  = inward normal of polygon edge [leftEdgeId]
+//       n_right = inward normal of polygon edge [rightEdgeId]
 // ═══════════════════════════════════════════════════
+function bisectorFromEdges(leftEdgeId: number, rightEdgeId: number, polygon: Vec2[]): Vec2 {
+  const n = polygon.length
 
-function computeNodeBisector(node: SSNode) {
-  const prevPt = node.prev.point
-  const currPt = node.point
-  const nextPt = node.next.point
-  
-  const u = normalize(subtract(currPt, prevPt))
-  const v = normalize(subtract(nextPt, currPt))
-  const n1 = { x: -u.y, y: u.x } 
-  const n2 = { x: -v.y, y: v.x }
-  
+  // Incoming edge direction (leftEdgeId → leftEdgeId+1)
+  const inDir = normalize(subtract(
+    polygon[(leftEdgeId + 1) % n],
+    polygon[leftEdgeId]
+  ))
+  // Outgoing edge direction (rightEdgeId → rightEdgeId+1)
+  const outDir = normalize(subtract(
+    polygon[(rightEdgeId + 1) % n],
+    polygon[rightEdgeId]
+  ))
+
+  // Inward normals (CCW polygon: rotate 90° CCW)
+  const n1 = { x: -inDir.y,  y: inDir.x  }
+  const n2 = { x: -outDir.y, y: outDir.x }
+
   const det = n1.x * n2.y - n1.y * n2.x
-  let bx = 0, by = 0
 
-  if (Math.abs(det) < 1e-3) {
-    // Check for varying edge directions (Needle vs Collinear)
-    const d = u.x * v.x + u.y * v.y
-    if (d < -0.9) {
-      // Needle (Antiparallel). Retreat along axis.
-      bx = -u.x
-      by = -u.y
+  let bx: number, by: number
+
+  if (Math.abs(det) < 1e-6) {
+    const d = dot(inDir, outDir)
+    if (d < -0.9999) {
+      bx = -inDir.x; by = -inDir.y   // anti-parallel needle
     } else {
-      bx = n1.x
-      by = n1.y
+      bx = n1.x; by = n1.y           // parallel/straight-through
     }
   } else {
-    bx = (1 * n2.y - 1 * n1.y) / det
-    by = (n1.x * 1 - n2.x * 1) / det
-    
-    // Snap to 45 degrees if close
-    const absX = Math.abs(bx)
-    const absY = Math.abs(by)
-    if (absX > 1e-5 && absY > 1e-5) {
-      const ratio = absX / absY
-      if (Math.abs(ratio - 1) < 0.01) { // 1% tolerance
-        // Force abs(x) == abs(y)
-        // We preserve signs.
-        // We need to satisfy n1.x*bx + n1.y*by = 1 (approx)
-        // Let's pick direction d = (sign(bx), sign(by))
-        // And find k such that n1.(k*d) = 1
-        const signX = bx > 0 ? 1 : -1
-        const signY = by > 0 ? 1 : -1
-        const dx = signX
-        const dy = signY
-        
-        // Solve k * (n1.x*dx + n1.y*dy) = 1
-        const dotProd = n1.x * dx + n1.y * dy
-        if (Math.abs(dotProd) > 1e-5) {
-          const k = 1 / dotProd
-          bx = k * dx
-          by = k * dy
-        }
-      }
-    }
-
-    node.bisector = { x: bx, y: by }
+    bx = (n2.y - n1.y) / det
+    by = (n1.x - n2.x) / det
   }
+
+  return { x: bx, y: by }
 }
 
-function computeNodeEvents(node: SSNode, allNodes: SSNode[], queue: SkeletonEvent[], currentTime: number) {
-  // Edge Event
+// ═══════════════════════════════════════════════════
+// computeNodeEvents
+// ═══════════════════════════════════════════════════
+function computeNodeEvents(
+  node: SSNode,
+  allNodes: SSNode[],
+  queue: SkeletonEvent[],
+  polygon: Vec2[],
+  currentTime: number
+) {
   const b1 = node.bisector
-  const b2 = node.next.bisector 
-  
-  if (b1 && b2) {
-    // EDGE COLLAPSE
-    // Use Virtual Points at T=0 to solve for Absolute Time directly
-    // P_virt = P_current - t_create * V_bisector
-    // If node.creationTime is undefined (old code), default 0.
-    const tc = node.creationTime || 0
-    const tcn = node.next.creationTime || 0
-    
-    // Virtual Start at T=0
-    const v1 = {
-      x: node.point.x - tc * node.bisector!.x,
-      y: node.point.y - tc * node.bisector!.y
-    }
-    const v2 = {
-      x: node.next.point.x - tcn * node.next.bisector!.x,
-      y: node.next.point.y - tcn * node.next.bisector!.y
-    }
-    
-    // intersect T is absolute time
-    const iRes = rayRayIntersectTime(v1, node.bisector!, v2, node.next.bisector!)
+  const b2 = node.next.bisector
 
+  // ── Edge Event ──────────────────────────────────
+  if (b1 && b2) {
+    const tc  = node.creationTime
+    const tcn = node.next.creationTime
+
+    const v1 = { x: node.point.x - tc * b1.x,           y: node.point.y - tc * b1.y }
+    const v2 = { x: node.next.point.x - tcn * b2.x,     y: node.next.point.y - tcn * b2.y }
+
+    const iRes = rayRayIntersectTime(v1, b1, v2, b2)
     if (iRes && iRes.t > currentTime + 1e-5) {
-      const absTime = iRes.t
-      
-      // Physics Check for Edge Event (using Distance from Creation)
-      // Node moved from Creation to Event.
-      // Dist = absTime - creationTime.
-      const dist = Math.sqrt(distSq(node.point, iRes.point))
-      const timeDelta = absTime - tc
-      
-      if (dist < timeDelta - 1e-3) {
-         // Invalid Slow Event
-      } else {
-        const evt: SkeletonEvent = {
-          type: 'EDGE',
-          time: absTime,
-          point: iRes.point,
-          v: node
-        }
-        node.EdgeEvent = evt
-        queue.push(evt)
-      }
+      const evt: SkeletonEvent = { type: 'EDGE', time: iRes.t, point: iRes.point, v: node }
+      console.log(`  EDGE: ${node.id}-${node.next.id} T=${iRes.t.toFixed(5)}`)
+      node.EdgeEvent = evt
+      queue.push(evt)
     }
   }
 
-  // Split Event
-  const prevPt = node.prev.point
-  const currPt = node.point
-  const nextPt = node.next.point
-  const u = normalize(subtract(currPt, prevPt))
-  const v = normalize(subtract(nextPt, currPt))
-  
-  const crossP = cross(u, v)
-  const isReflex = crossP < -1e-5 
-  
+  // ── Split Event ──────────────────────────────────
+  // Reflex check: use original edge directions (not node positions)
+  const inDir  = normalize(subtract(polygon[(node.leftEdgeId + 1)  % polygon.length], polygon[node.leftEdgeId]))
+  const outDir = normalize(subtract(polygon[(node.rightEdgeId + 1) % polygon.length], polygon[node.rightEdgeId]))
+  const isReflex = cross(inDir, outDir) < -1e-5
+
   if (isReflex && node.bisector) {
-    let bestT = Infinity
-    let bestPt: Vec2 | null = null
-    let bestEdgeNode: SSNode | null = null
+    if (node.SplitEvent) { node.SplitEvent.time = -1; node.SplitEvent = null }
 
-    if (node.SplitEvent) {
-      node.SplitEvent.time = -1
-      node.SplitEvent = null
-    }
+    let bestT = Infinity, bestPt: Vec2 | null = null, bestEdgeNode: SSNode | null = null
 
-    let curr = node.next.next 
+    let curr = node.next.next
     let safe = 0
-    // Traverse the linked list
-    while (curr !== node.prev && safe++ < 200) { 
-      if (curr === node) break 
-      
-      const edgeStart = curr.point
-      const edgeEnd = curr.next.point 
-      
-      const edgeVec = normalize(subtract(edgeEnd, edgeStart))
-      const edgeNormal = { x: -edgeVec.y, y: edgeVec.x } 
-      
-      // Calculate Absolute Time using Virtual Point C_virt (at t=0)
-      // Edge Line: N . X = C_0 + t
-      // Ray: X = P_virt + t * B
-      
-      // Recover C_0 from original node (since Edge moves from T=0)
-      const originalStart = allNodes[curr.id].point
-      const C_0 = dot(edgeNormal, originalStart)
+    while (curr !== node.prev && safe++ < 200) {
+      if (curr === node) break
+      if (!curr.isActive || !curr.next.isActive) { curr = curr.next; continue }
 
-      // P_virt = P_creation - t_create * B
-      const tc = node.creationTime || 0
+      // Use original edge direction for edgeNormal
+      const edgeId = curr.rightEdgeId
+      const origEdgeDir = normalize(subtract(
+        polygon[(edgeId + 1) % polygon.length],
+        polygon[edgeId]
+      ))
+      const edgeNormal = { x: -origEdgeDir.y, y: origEdgeDir.x }
+
+      const originalStart = polygon[edgeId]
+      const C_0  = dot(edgeNormal, originalStart)
+      const tc   = node.creationTime
       const virtStart = {
         x: node.point.x - tc * node.bisector!.x,
         y: node.point.y - tc * node.bisector!.y
       }
-      
-      const NB = dot(edgeNormal, node.bisector!)
+
+      const NB    = dot(edgeNormal, node.bisector!)
       const numer = C_0 - dot(edgeNormal, virtStart)
       const denom = NB - 1
-      
-      if (Math.abs(denom) > 1e-4) {
+
+      if (Math.abs(denom) > 1e-6) {
         const absTime = numer / denom
-        
-        // We need T > currentTime (forward consistency)
-        if (absTime > currentTime + 1e-4) {
-           if (absTime < bestT) {
-              const dt = absTime - currentTime
-              const intersectPt: Vec2 = {
-                x: node.point.x + dt * node.bisector!.x,
-                y: node.point.y + dt * node.bisector!.y
-              }
-              
-              if (curr.bisector && curr.next.bisector) { 
-                 const sT = {
-                   x: curr.point.x + dt * curr.bisector.x,
-                   y: curr.point.y + dt * curr.bisector.y
-                 }
-                 const eT = {
-                   x: curr.next.point.x + dt * curr.next.bisector.x,
-                   y: curr.next.point.y + dt * curr.next.bisector.y
-                 }
-                 
-                 if (isBetween(intersectPt, sT, eT)) {
-                   bestT = absTime
-                   bestPt = intersectPt
-                   bestEdgeNode = curr
-                 }
-              }
-           }
+        if (absTime > currentTime + 1e-5 && absTime < bestT) {
+          const dt = absTime - currentTime
+          const intersectPt: Vec2 = {
+            x: node.point.x + dt * node.bisector!.x,
+            y: node.point.y + dt * node.bisector!.y
+          }
+          if (curr.bisector && curr.next.bisector) {
+            const sT = { x: curr.point.x + dt * curr.bisector.x,           y: curr.point.y + dt * curr.bisector.y }
+            const eT = { x: curr.next.point.x + dt * curr.next.bisector.x, y: curr.next.point.y + dt * curr.next.bisector.y }
+            if (isBetween(intersectPt, sT, eT)) {
+              bestT = absTime; bestPt = intersectPt; bestEdgeNode = curr
+            }
+          }
         }
       }
       curr = curr.next
     }
 
     if (bestEdgeNode && bestPt) {
-      // Physics Check: Distance must be >= Time Delta (Node speed >= 1)
-      const dist = Math.sqrt(distSq(node.point, bestPt))
-      const dt = bestT - currentTime
-      
-      if (dist < dt - 1e-3) {
-         // console.log(`Invalid Slow Event: ${dist.toFixed(3)} < ${dt.toFixed(3)}`)
-      } else {
-        const evt: SkeletonEvent = {
-          type: 'SPLIT',
-          time: bestT,
-          point: bestPt,
-          v: node,
-          oppositeEdge: bestEdgeNode
-        }
-        node.SplitEvent = evt
-        queue.push(evt)
-      }
+      console.log(`  SPLIT: Node ${node.id} on Edge ${bestEdgeNode.id} T=${bestT.toFixed(5)}`)
+      const evt: SkeletonEvent = { type: 'SPLIT', time: bestT, point: bestPt, v: node, oppositeEdge: bestEdgeNode }
+      node.SplitEvent = evt
+      queue.push(evt)
     }
   }
 }
 
-function isBetween(p: Vec2, a: Vec2, b: Vec2): boolean {
-  const ab = subtract(b, a)
-  const ap = subtract(p, a)
-  const dotVal = dot(ap, ab)
-  const abLenSq = dot(ab, ab)
-  return dotVal >= -1e-4 && dotVal <= abLenSq + 1e-4
+// ═══════════════════════════════════════════════════
+// Degenerate loop collapse
+// ═══════════════════════════════════════════════════
+function checkAndCollapseDegenerate(node: SSNode, outputArcs: SkeletonArc[]) {
+  if (!node.isActive) return
+
+  const loop: SSNode[] = []
+  let curr = node
+  let safe = 0
+  do { loop.push(curr); curr = curr.next; safe++ } while (curr !== node && safe < 1000)
+  if (safe >= 1000) return
+
+  let changed = false
+  do {
+    changed = false
+    if (loop.length < 3) break
+    for (let i = 0; i < loop.length; i++) {
+      const u = loop[(i - 1 + loop.length) % loop.length]
+      const v = loop[i]
+      const w = loop[(i + 1) % loop.length]
+      if (!v.isActive) continue
+      const d1 = normalize(subtract(v.point, u.point))
+      const d2 = normalize(subtract(w.point, v.point))
+      if (dot(d1, d2) < -0.9) {
+        if (distSq(u.point, v.point) > 1e-6)
+          outputArcs.push({ start: u.point, end: v.point, leftFace: u.leftEdgeId, rightFace: u.rightEdgeId })
+        v.isActive = false; u.next = w; w.prev = u
+        loop.splice(i, 1); changed = true; i--
+      }
+    }
+  } while (changed && loop.length >= 3)
+
+  let area = 0
+  for (let i = 0; i < loop.length; i++) {
+    if (!loop[i].isActive) continue
+    const p1 = loop[i].point, p2 = loop[i].next.point
+    area += p1.x * p2.y - p1.y * p2.x
+  }
+  if (Math.abs(area) * 0.5 < 1e-3) {
+    for (let i = 0; i < loop.length; i++) {
+      const u = loop[i], v = loop[(i + 1) % loop.length]
+      if (distSq(u.point, v.point) > 1e-6)
+        outputArcs.push({ start: u.point, end: v.point, leftFace: u.leftEdgeId, rightFace: u.rightEdgeId })
+      u.isActive = false
+    }
+  }
 }
 
-
+// ═══════════════════════════════════════════════════
+// buildFacePolygon — directed arc traversal
+// ═══════════════════════════════════════════════════
 function buildFacePolygon(
-  edgeIdx: number, 
-  originalStart: Vec2, 
-  originalEnd: Vec2, 
+  edgeIdx: number,
+  originalStart: Vec2,
+  originalEnd: Vec2,
   arcs: SkeletonArc[]
 ): Vec2[] {
-  // Graph Traversal Approach
-  // We want to form a closed loop.
-  // We know the base of the face is the original edge: originalStart -> originalEnd.
-  // We need to find the path from originalEnd back to originalStart through the skeleton arcs.
-  
-  // 1. Filter relevant arcs
   const faceArcs = arcs.filter(a => a.leftFace === edgeIdx || a.rightFace === edgeIdx)
-  
-  if (faceArcs.length === 0) {
-    return [originalStart, originalEnd]
-  }
+  if (faceArcs.length === 0) return [originalStart, originalEnd]
 
-  // 2. Build Adjacency Graph for these arcs
-  // Map<PointKey, Point[]>
-  const adj = new Map<string, Vec2[]>()
   const ptKey = (p: Vec2) => `${p.x.toFixed(5)},${p.y.toFixed(5)}`
-  
-  const addEdge = (p1: Vec2, p2: Vec2) => {
-    const k1 = ptKey(p1)
-    const k2 = ptKey(p2)
-    if (!adj.has(k1)) adj.set(k1, [])
-    if (!adj.has(k2)) adj.set(k2, [])
-    
-    // Check duplicates
-    if (!adj.get(k1)!.some(v => distSq(v, p2) < 1e-8)) adj.get(k1)!.push(p2)
-    if (!adj.get(k2)!.some(v => distSq(v, p1) < 1e-8)) adj.get(k2)!.push(p1)
+  const dirAdj = new Map<string, Vec2[]>()
+  const addDirected = (from: Vec2, to: Vec2) => {
+    const k = ptKey(from)
+    if (!dirAdj.has(k)) dirAdj.set(k, [])
+    const list = dirAdj.get(k)!
+    if (!list.some(v => distSq(v, to) < 1e-8)) list.push(to)
   }
 
-  faceArcs.forEach(a => addEdge(a.start, a.end))
+  for (const arc of faceArcs) {
+    if (arc.leftFace === edgeIdx)  addDirected(arc.start, arc.end)
+    else                           addDirected(arc.end,   arc.start)
+  }
 
-  // 3. Find path from originalEnd to originalStart
-  const startKey = ptKey(originalEnd)
+  const path: Vec2[] = [originalEnd]
+  const visited = new Set<string>()
+  visited.add(ptKey(originalEnd))
   const targetKey = ptKey(originalStart)
-  
-  if (!adj.has(startKey)) {
-    return [originalStart, originalEnd]
-  }
+  let curr = originalEnd
 
-  // BFS
-  const queue: { curr: Vec2, path: Vec2[] }[] = [{ curr: originalEnd, path: [originalEnd] }]
-  const visited = new Set<string>(); visited.add(startKey)
-  
-  let bestPath: Vec2[] | null = null
-
-  while (queue.length > 0) {
-    const { curr, path } = queue.shift()!
+  for (let safe = 0; safe < 1000; safe++) {
     const key = ptKey(curr)
-    
-    if (key === targetKey) {
-      bestPath = path
-      break
-    }
-    
-    const neighbors = adj.get(key) || []
-    for (const next of neighbors) {
-      const nKey = ptKey(next)
-      if (!visited.has(nKey)) {
-        visited.add(nKey)
-        queue.push({ curr: next, path: [...path, next] })
-      }
-    }
+    if (key === targetKey) break
+    const neighbors = dirAdj.get(key)
+    if (!neighbors || neighbors.length === 0) break
+    const next = neighbors.find(nb => !visited.has(ptKey(nb))) ?? neighbors[0]
+    const nKey = ptKey(next)
+    if (visited.has(nKey) && nKey !== targetKey) break
+    visited.add(nKey); path.push(next); curr = next
+    if (nKey === targetKey) break
   }
 
-  if (bestPath) {
-    const loop = [originalStart, ...bestPath.slice(0, bestPath.length - 1)]
-    return loop
-  } else {
-    return simpleAngularSort(originalStart, originalEnd, arcs)
-  }
+  if (path.length >= 2 && distSq(path[path.length - 1], originalStart) < 1e-6) path.pop()
+  if (path.length < 1) return [originalStart, originalEnd]
+  return [originalStart, ...path]
 }
 
-function simpleAngularSort(p1: Vec2, p2: Vec2, arcs: SkeletonArc[]): Vec2[] {
-  const rawPts: Vec2[] = [p1, p2]
-  arcs.forEach(a => { rawPts.push(a.start); rawPts.push(a.end) })
-  
-  const uniquePts: Vec2[] = []
-  rawPts.forEach(p => {
-    if (!uniquePts.some(u => distSq(u, p) < 1e-6)) uniquePts.push(p)
-  })
-  
-  let cx = 0, cy = 0
-  uniquePts.forEach(p => { cx += p.x; cy += p.y })
-  cx /= uniquePts.length; cy /= uniquePts.length
-  
-  return uniquePts.sort((a, b) => Math.atan2(a.y - cy, a.x - cx) - Math.atan2(b.y - cy, b.x - cx))
-}
-
+// ═══════════════════════════════════════════════════
+// Math Utilities
+// ═══════════════════════════════════════════════════
 function subtract(a: Vec2, b: Vec2): Vec2 { return { x: a.x - b.x, y: a.y - b.y } }
-function add(a: Vec2, b: Vec2): Vec2 { return { x: a.x + b.x, y: a.y + b.y } }
 function normalize(v: Vec2): Vec2 {
   const len = Math.hypot(v.x, v.y)
   return len > 1e-10 ? { x: v.x / len, y: v.y / len } : { x: 0, y: 0 }
 }
-function cross(a: Vec2, b: Vec2): number { return a.x * b.y - a.y * b.x }
-function dot(a: Vec2, b: Vec2): number { return a.x * b.x + a.y * b.y }
-function distSq(a: Vec2, b: Vec2): number { return (a.x-b.x)**2 + (a.y-b.y)**2 }
+function cross(a: Vec2, b: Vec2): number  { return a.x * b.y - a.y * b.x }
+function dot(a: Vec2, b: Vec2): number    { return a.x * b.x + a.y * b.y }
+function distSq(a: Vec2, b: Vec2): number { return (a.x - b.x) ** 2 + (a.y - b.y) ** 2 }
 
 function signedArea(pts: Vec2[]): number {
   let area = 0
-  for(let i=0; i<pts.length; i++) area += cross(pts[i], pts[(i+1)%pts.length])
+  for (let i = 0; i < pts.length; i++) area += cross(pts[i], pts[(i + 1) % pts.length])
   return area / 2
+}
+
+function isBetween(p: Vec2, a: Vec2, b: Vec2): boolean {
+  const ab = subtract(b, a), ap = subtract(p, a)
+  const dotVal = dot(ap, ab), abLenSq = dot(ab, ab)
+  return dotVal >= -1e-4 && dotVal <= abLenSq + 1e-4
 }
 
 function rayRayIntersectTime(
   o1: Vec2, d1: Vec2,
   o2: Vec2, d2: Vec2
-): { t: number, point: Vec2 } | null {
+): { t: number; point: Vec2 } | null {
   const det = d1.x * d2.y - d1.y * d2.x
   if (Math.abs(det) < 1e-8) return null
-  const dx = o2.x - o1.x
-  const dy = o2.y - o1.y
-  const t = (dx * d2.y - dy * d2.x) / det
-  
+  const dx = o2.x - o1.x, dy = o2.y - o1.y
+  const t  = (dx * d2.y - dy * d2.x) / det
   return { t, point: { x: o1.x + t * d1.x, y: o1.y + t * d1.y } }
 }

@@ -87,7 +87,7 @@ export interface Opening {
   sillHeight?: number
   
   // Expanded properties for BOQ and visualization
-  subtype?: 'single' | 'double' | 'sliding' | 'folding' | 'pivot' | 'garage_single' | 'garage_double' | 'top_hung' | 'side_hung'
+  subtype?: 'single' | 'double' | 'sliding' | 'folding' | 'pivot' | 'garage_single' | 'garage_double' | 'top_hung' | 'side_hung' | 'stable'
   material?: 'aluminium' | 'steel' | 'wood' | 'frameless'
   lintelType?: 'concrete' | 'steel' | 'timber' | 'none'
   sillType?: 'external_concrete' | 'external_brick' | 'internal_timber' | 'none'
