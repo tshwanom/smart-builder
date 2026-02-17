@@ -121,8 +121,8 @@ export function computeStraightSkeleton(polygon: Vec2[]): SkeletonResult {
         // So EDGE < SPLIT.
         // If a=EDGE, b=SPLIT. a before b. return -1.
         
-        if (a.type === 'EDGE' && b.type === 'SPLIT') return 1
-        if (a.type === 'SPLIT' && b.type === 'EDGE') return -1
+        if (a.type === 'EDGE' && b.type === 'SPLIT') return -1
+        if (a.type === 'SPLIT' && b.type === 'EDGE') return 1
         return 0
       }
       return diff
