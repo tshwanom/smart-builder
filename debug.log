@@ -1,0 +1,11 @@
+Processing EDGE: Node 2 -> Node 3 at t=2.50 pt=7.50,7.50
+ARC EDGE: Node 2 (10,10) -> (7.5,7.5)
+Processing EDGE: Node 0 -> Node 4 at t=5.00 pt=5.00,5.00
+ARC EDGE: Node 0 (0,0) -> (5,5)
+ARC SPLIT: Node 4 -> (7.50,2.50)
+Processing EDGE: Node 2 -> Node 3 at t=2.50 pt=7.50,7.50
+ARC EDGE: Node 2 (10,10) -> (7.5,7.5)
+ARC DEGENERATE: Node 1 (10.00,0.00) -> Node 3 (7.50,7.50)
+ARC DEGENERATE: Node 1 (10.00,0.00) -> Node 0 (7.50,2.50)
+Processing EDGE: Node 0 -> Node 4 at t=5.00 pt=5.00,5.00
+ARC EDGE: Node 0 (0,0) -> (5,5)

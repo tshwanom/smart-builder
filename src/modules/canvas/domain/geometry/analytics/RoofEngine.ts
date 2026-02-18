@@ -3,6 +3,8 @@ import { createRoofPlane } from './RoofPlane'
 import { computeStraightSkeleton, SkeletonResult } from './StraightSkeleton'
 import { PlaneClipper } from './PlaneClipper'
 
+
+
 export interface EdgeDirective {
   behavior: 'hip' | 'gable' | 'none'
   pitch?: number
@@ -35,9 +37,11 @@ export class RoofEngine {
         const plateHeight = isMillimeters ? 2700 : 2.7
 
         // ── Step 1: Compute eave polygon (footprint + overhang) ──
+        // ── Step 1: Compute eave polygon (footprint + overhang) ──
         let eavePolygon: Vec2[]
         if (overhang > 0) {
             eavePolygon = offsetPolygon(footprint, overhang)
+            
             if (eavePolygon.length < 3) eavePolygon = [...footprint]
         } else {
             eavePolygon = [...footprint]
@@ -246,7 +250,7 @@ function classifyInternalEdge(
  * Handles both convex and concave (L-shaped, T-shaped) polygons.
  * Uses miter join at all vertices, with spike limiting for very acute angles.
  */
-function offsetPolygon(polygon: Vec2[], distance: number): Vec2[] {
+export function offsetPolygon(polygon: Vec2[], distance: number): Vec2[] {
     const n = polygon.length
     if (n < 3) return [...polygon]
 
@@ -342,3 +346,5 @@ function lineLineIntersect(a1: Vec2, a2: Vec2, b1: Vec2, b2: Vec2): Vec2 | null 
         y: a1.y + t * (a2.y - a1.y)
     }
 }
+
+

@@ -1,0 +1,101 @@
+{
+  "arcCount": 8,
+  "arcs": [
+    {
+      "start": {
+        "x": 5,
+        "y": 5
+      },
+      "end": {
+        "x": 7.5,
+        "y": 2.5
+      },
+      "leftFace": 3,
+      "rightFace": 4
+    },
+    {
+      "start": {
+        "x": 10,
+        "y": 10
+      },
+      "end": {
+        "x": 7.5,
+        "y": 7.5
+      },
+      "leftFace": 1,
+      "rightFace": 2
+    },
+    {
+      "start": {
+        "x": 5,
+        "y": 10
+      },
+      "end": {
+        "x": 7.5,
+        "y": 7.5
+      },
+      "leftFace": 2,
+      "rightFace": 3
+    },
+    {
+      "start": {
+        "x": 10,
+        "y": 0
+      },
+      "end": {
+        "x": 7.5,
+        "y": 7.5
+      },
+      "leftFace": 0,
+      "rightFace": 1
+    },
+    {
+      "start": {
+        "x": 10,
+        "y": 0
+      },
+      "end": {
+        "x": 7.5,
+        "y": 2.5
+      },
+      "leftFace": 0,
+      "rightFace": 1
+    },
+    {
+      "start": {
+        "x": 0,
+        "y": 0
+      },
+      "end": {
+        "x": 5,
+        "y": 5
+      },
+      "leftFace": 5,
+      "rightFace": 0
+    },
+    {
+      "start": {
+        "x": 7.5,
+        "y": 2.5
+      },
+      "end": {
+        "x": 5,
+        "y": 5
+      },
+      "leftFace": 5,
+      "rightFace": 4
+    },
+    {
+      "start": {
+        "x": 0,
+        "y": 5
+      },
+      "end": {
+        "x": 5,
+        "y": 5
+      },
+      "leftFace": 4,
+      "rightFace": 5
+    }
+  ]
+}

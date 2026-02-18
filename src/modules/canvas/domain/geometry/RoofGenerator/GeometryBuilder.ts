@@ -1,5 +1,5 @@
 import { Point, Wall, RoofPanel } from '../../../application/types'
-import { RoofEngine, EdgeDirective } from '../analytics/RoofEngine'
+import { RoofEngine, EdgeDirective, offsetPolygon } from '../analytics/RoofEngine'
 import { RoofGeometry } from '../analytics/types'
 import { PolygonProcessor } from '../PolygonProcessor'
 
@@ -70,90 +70,172 @@ export class RoofGenerator {
             return null
         }
 
-        // ── 4. Incremental union → building outer face ──
-        const outerFaces = PolygonProcessor.incrementalUnion(wallRects)
+        // ── NEW STRATEGY: Union of Floors ──
+        // 1. Collect all room floors.
+        // 2. Union them to remove internal walls and get the "Net Floor Area".
+        // 3. Offset by wall thickness to get "Gross Building Footprint".
+        // 4. Generate roof on that.
+        
+        const roomPolys: Point[][] = []
+        let effectivePitch = panels[0]?.pitchedConfig?.pitch ?? 30 // Default fallback
 
-        if (outerFaces.length === 0) {
-            console.error('[RoofGenerator] Union produced no polygons')
-            return null
+        for (const room of rooms) {
+             if (room.hasRoof === false) continue
+             if (!room.polygon || room.polygon.length < 3) continue
+             
+             // Capture pitch from first room that has it (or last? usually consistent)
+             const r = room as any
+             if (r.roofPitch) effectivePitch = r.roofPitch
+             
+             roomPolys.push(room.polygon)
         }
 
-        // Pick the largest polygon as the building footprint
-        const sortedFaces = outerFaces
-            .map(face => ({ face, area: PolygonProcessor.calculateArea(face) }))
-            .sort((a, b) => b.area - a.area)
+        if (roomPolys.length === 0) {
+            console.error('[RoofGenerator] No room polygons found')
+            // Fallback to wall union if strictly needed, or just return null
+             if (filteredWalls.length > 0) {
+                 // Fallback logic ...
+             } else {
+                 return null
+             }
+        }
 
-        console.log(`[RoofGenerator] Union result: ${outerFaces.length} polygon(s), largest area: ${sortedFaces[0].area.toFixed(0)}`)
-
-        // ── 5. Detect unit scale ──
-        const mainFace = sortedFaces[0].face
-        const maxCoord = mainFace.reduce((m, p) => Math.max(m, Math.abs(p.x), Math.abs(p.y)), 0)
-        const isMillimeters = maxCoord > 500
-
-        // ── 6. Simplify footprint — remove short edges from union artifacts ──
-        // Short edges (< wall thickness) are union artifacts at wall junctions
-        // They create extra skeleton faces and messy valleys
-        const minEdgeLength = avgThickness * 0.9  // ~200mm for 220mm walls
-
-        // ── 7. Set roof parameters ──
-        const plateHeight = isMillimeters ? 2700 : 2.7
-        const scaledOverhang = isMillimeters ? globalOverhang : globalOverhang / 1000
-        const pitch = panels[0]?.pitchedConfig?.pitch ?? globalPitch
-
-        console.log(`[RoofGenerator] Overhang: ${scaledOverhang}, minEdge: ${minEdgeLength.toFixed(0)}`)
-
-        // ── 8. Generate roof for each disconnected building ──
-        const allGeometries: RoofGeometry[] = []
+        // Union Floors
+        const floorFaces = PolygonProcessor.incrementalUnion(roomPolys)
         
-        for (let i = 0; i < sortedFaces.length; i++) {
-            let footprint = sortedFaces[i].face
+        if (floorFaces.length === 0) {
+             // Fallback to walls?
+             console.log('[RoofGenerator] Floor union failed, trying walls...')
+        }
+        
+        const combinedPlanes: any[] = []
+        const combinedEdges: any[] = []
+        const combinedValleys: any[] = []
+        const combinedRidges: any[] = []
+        const combinedHips: any[] = []
+        const combinedEaves: any[] = []
+        const combinedArrows: any[] = []
+        let globalFootprint: Point[] = []
+        
+        // Process each disconnected floor island
+        for (let i = 0; i < floorFaces.length; i++) {
+            const floorPoly = floorFaces[i]
+            
+            // Offset: Floor -> Outer Wall
+            const offsetDist = avgThickness
+            const footprint = offsetPolygon(floorPoly, offsetDist)
+            
             if (footprint.length < 3) continue
 
-            // Simplify: remove short edges that are union artifacts
-            footprint = this.simplifyFootprint(footprint, minEdgeLength)
-            if (footprint.length < 3) continue
+            // Add to global footprint visual
+            if (globalFootprint.length === 0 || PolygonProcessor.calculateArea(footprint) > PolygonProcessor.calculateArea(globalFootprint)) {
+                globalFootprint = footprint
+            }
 
-            console.log(`[RoofGenerator] Building ${i + 1}: ${footprint.length} edges after simplification`)
-
+             // Detect scale
+            const maxC = footprint.reduce((m, p) => Math.max(m, Math.abs(p.x), Math.abs(p.y)), 0)
+            const isMm = maxC > 500
+            
+            const plateHeight = isMm ? 2700 : 2.7
+            const scaledOverhang = isMm ? globalOverhang : globalOverhang / 1000
+            
             const directives: EdgeDirective[] = footprint.map(() => ({
-                behavior: 'hip' as const,
-                pitch,
+                behavior: 'hip',
+                pitch: effectivePitch,
                 baselineHeight: plateHeight
             }))
 
             const geometry = RoofEngine.generate({
-                footprint,
+                footprint: footprint,
                 edgeDirectives: directives,
-                defaultPitch: pitch,
+                defaultPitch: effectivePitch,
                 overhang: scaledOverhang
             })
-
-            if (geometry) {
-                allGeometries.push(geometry)
+            
+             if (geometry) {
+                // Ensure IDs are unique
+                const suffix = `-island-${i}`
+                
+                geometry.planes.forEach(p => {
+                    p.id += suffix
+                    combinedPlanes.push(p)
+                })
+                geometry.edges.forEach(e => combinedEdges.push(e))
+                geometry.ridges.forEach(e => combinedRidges.push(e))
+                geometry.hips.forEach(e => combinedHips.push(e))
+                geometry.valleys.forEach(e => combinedValleys.push(e))
+                geometry.eaves.forEach(e => combinedEaves.push(e))
+                geometry.slopeArrows.forEach(e => combinedArrows.push(e))
             }
         }
+        
+        // (Legacy single-room fallback removed)
+        
+        // 2. Fallback: If no rooms processed, try global union of walls
+        if (floorFaces.length === 0 && wallRects.length > 0) {
+             console.log('[RoofGenerator] No rooms found, falling back to global wall union')
+             const outerFaces = PolygonProcessor.incrementalUnion(wallRects)
+             if (outerFaces.length > 0) {
+                 const sorted = outerFaces
+                    .map(face => ({ face, area: PolygonProcessor.calculateArea(face) }))
+                    .sort((a, b) => b.area - a.area)
+                 
+                 // Note: Union result is ALREADY outer face.
+                 // We must NOT offset it again by wall thickness.
+                 // We can either offset by 0 or fix the helper.
+                 // Let's manually call Generate here to be safe and clean.
+                 
+                 const footprint = sorted[0].face
+                 // Simplify
+                 const simpleFootprint = this.simplifyFootprint(footprint, avgThickness * 0.9)
+                 
+                 const maxC = simpleFootprint.reduce((m, p) => Math.max(m, Math.abs(p.x), Math.abs(p.y)), 0)
+                 const isMm = maxC > 500
+                 const plateHeight = isMm ? 2700 : 2.7
+                 const scaledOverhang = isMm ? globalOverhang : globalOverhang / 1000
+                 const pitch = panels[0]?.pitchedConfig?.pitch ?? globalPitch
 
-        if (allGeometries.length === 0) {
-            console.error('[RoofGenerator] No valid roof geometry generated')
-            return null
+                 const directives: EdgeDirective[] = simpleFootprint.map(() => ({
+                    behavior: 'hip',
+                    pitch: pitch,
+                    baselineHeight: plateHeight
+                }))
+
+                const geometry = RoofEngine.generate({
+                    footprint: simpleFootprint,
+                    edgeDirectives: directives,
+                    defaultPitch: pitch,
+                    overhang: scaledOverhang
+                })
+                
+                if (geometry) {
+                    geometry.planes.forEach(p => combinedPlanes.push(p))
+                    geometry.edges.forEach(e => combinedEdges.push(e))
+                    geometry.ridges.forEach(e => combinedRidges.push(e))
+                    geometry.hips.forEach(e => combinedHips.push(e))
+                    geometry.valleys.forEach(e => combinedValleys.push(e))
+                    geometry.eaves.forEach(e => combinedEaves.push(e))
+                    geometry.slopeArrows.forEach(e => combinedArrows.push(e))
+                }
+             }
         }
 
         // ── 9. Merge all geometries ──
         const merged: RoofGeometry = {
-            planes: allGeometries.flatMap(g => g.planes),
-            edges: allGeometries.flatMap(g => g.edges),
-            ridges: allGeometries.flatMap(g => g.ridges),
-            hips: allGeometries.flatMap(g => g.hips),
-            valleys: allGeometries.flatMap(g => g.valleys),
-            eaves: allGeometries.flatMap(g => g.eaves),
-            slopeArrows: allGeometries.flatMap(g => g.slopeArrows),
-            footprint: allGeometries[0].footprint
+            planes: combinedPlanes,
+            edges: combinedEdges,
+            ridges: combinedRidges,
+            hips: combinedHips,
+            valleys: combinedValleys,
+            eaves: combinedEaves,
+            slopeArrows: combinedArrows,
+            footprint: globalFootprint
         }
 
-        console.log(`[RoofGenerator] Combined: ${merged.planes.length} planes, ${merged.valleys.length} valleys`)
+        console.log(`[RoofGenerator] Combined: ${merged.planes.length} planes`)
         return merged
     }
-
+    
     /**
      * Simplifies a polygon by iteratively removing short edges.
      * Short edges are union artifacts at wall junctions that create
