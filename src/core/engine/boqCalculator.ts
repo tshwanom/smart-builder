@@ -4,6 +4,8 @@
  */
 
 import { BOQItem, BOQCalculationInput } from './boq-calculators/types'
+import { ProjectGeometry } from '../../domain/types'
+import { adaptGeometryToBOQInput } from '../../application/adapters/boqAdapter'
 import { calculateFoundation } from './boq-calculators/foundation'
 import { calculateSubfloor } from './boq-calculators/subfloor'
 import { calculateWalling } from './boq-calculators/walling'
@@ -103,4 +105,25 @@ export function calculateTotalCost(boq: BOQItem[]): number {
   return boq.reduce((total, item) => {
     return total + (item.totalPrice || 0)
   }, 0)
+}
+
+/**
+ * Calculate BOQ directly from Project Geometry (New Architecture)
+ */
+export function calculateProjectBOQ(project: ProjectGeometry): BOQItem[] {
+  const partialInput = adaptGeometryToBOQInput(project)
+  
+  // Fill missing required fields with defaults
+  const fullInput: BOQCalculationInput = {
+    wallLength: partialInput.wallLength || 0,
+    wallArea: partialInput.wallArea || 0,
+    floorArea: partialInput.floorArea || 0,
+    openings: partialInput.openings || [],
+    roofType: partialInput.roofType || 'gable',
+    roofPitch: partialInput.roofPitch || 0,
+    brickType: 'clay', // Default
+    // TODO: Map other fields like MEP if/when available in ProjectGeometry
+  }
+
+  return calculateBOQ(fullInput)
 }
