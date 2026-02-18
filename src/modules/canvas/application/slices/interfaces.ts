@@ -1,4 +1,5 @@
-import { Point, Wall, Room, Opening, RoofPanel, ElectricalPoint, PlumbingPoint, MEPConfig, BOQConfig, ProjectData, Story, Staircase } from '../types'
+import { Point, Wall, Room, Opening, RoofPanel, ElectricalPoint, PlumbingPoint, HVACPoint, MEPConfig, BOQConfig, ProjectData, Story, Staircase } from '../types'
+import { StructureElementDomain } from '@/modules/structure/domain/StructureTypes'
 
 export interface StaircaseSlice {
   staircases: Staircase[]
@@ -166,6 +167,7 @@ export interface RoofSlice {
 export interface MEPSlice {
   electricalPoints: ElectricalPoint[]
   plumbingPoints: PlumbingPoint[]
+  hvacPoints: HVACPoint[]
   mepConfig: MEPConfig
   
   addElectricalPoint: (point: Omit<ElectricalPoint, 'id'>) => void
@@ -176,7 +178,11 @@ export interface MEPSlice {
   updatePlumbingPoint: (id: string, updates: Partial<PlumbingPoint>) => void
   deletePlumbingPoint: (id: string) => void
 
-  updateMEPConfig: (config: Partial<MEPConfig> | Partial<MEPConfig['electrical']> | Partial<MEPConfig['plumbing']>) => void
+  addHVACPoint: (point: Omit<HVACPoint, 'id'>) => void
+  updateHVACPoint: (id: string, updates: Partial<HVACPoint>) => void
+  deleteHVACPoint: (id: string) => void
+
+  updateMEPConfig: (config: Partial<MEPConfig> | Partial<MEPConfig['electrical']> | Partial<MEPConfig['plumbing']> | Partial<MEPConfig['hvac']>) => void
   setMEPWizardCompleted: (completed: boolean) => void
 }
 
@@ -198,3 +204,14 @@ export interface StorySlice {
   deleteStory: (id: string) => void
   setActiveStory: (id: string) => void
 }
+
+export interface StructureSlice {
+  structureElements: StructureElementDomain[]
+  addStructureElement: (element: StructureElementDomain) => void
+  updateStructureElement: (id: string, updates: Partial<StructureElementDomain>) => void
+  removeStructureElement: (id: string) => void
+  setStructureElements: (elements: StructureElementDomain[]) => void
+}
+
+import { FinishSlice } from './finishSlice'
+export type { FinishSlice }

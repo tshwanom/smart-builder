@@ -10,13 +10,13 @@ import { useSession } from 'next-auth/react'
 import dynamic from 'next/dynamic'
 import { PaystackPaymentRef } from './PaystackPayment'
 
-const PaystackPayment = dynamic(() => import('./PaystackPayment'), { ssr: false })
+const PaystackPayment = dynamic(() => import('./PaystackPayment').then(mod => mod.PaystackPayment), { ssr: false })
 
 export interface BOQHeaderButtonProps {
   projectId: string | null
 }
 
-export const BOQHeaderButton: React.FC<BOQHeaderButtonProps> = ({ projectId }) => {
+export const BOQHeaderButton = React.forwardRef<HTMLButtonElement, BOQHeaderButtonProps>(({ projectId }, ref) => {
   const { data: session } = useSession()
   const { rooms, openings, mepConfig, electricalPoints, plumbingPoints } = useCanvasStore()
   const [boq, setBOQ] = useState<BOQItem[] | null>(null)
@@ -142,6 +142,7 @@ export const BOQHeaderButton: React.FC<BOQHeaderButtonProps> = ({ projectId }) =
   return (
     <>
       <button
+        ref={ref}
         onClick={generateBOQ}
         disabled={isLoading || rooms.length === 0}
         className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
@@ -174,4 +175,6 @@ export const BOQHeaderButton: React.FC<BOQHeaderButtonProps> = ({ projectId }) =
       />
     </>
   )
-}
+})
+
+BOQHeaderButton.displayName = 'BOQHeaderButton'

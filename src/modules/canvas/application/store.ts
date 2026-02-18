@@ -13,6 +13,8 @@ import { createBOQSlice } from './slices/boqSlice'
 import { createProjectSlice } from './slices/projectSlice'
 import { createStaircaseSlice } from './slices/staircaseSlice'
 import { createStorySlice } from './slices/storySlice'
+import { createStructureSlice } from './slices/structureSlice'
+import { createFinishSlice } from './slices/finishSlice'
 
 export const useCanvasStore = create<CanvasStore>()(
   persist(
@@ -28,6 +30,8 @@ export const useCanvasStore = create<CanvasStore>()(
         ...createProjectSlice(...a),
         ...createStorySlice(...a),
         ...createStaircaseSlice(...a),
+        ...createStructureSlice(...a),
+        ...createFinishSlice(...a),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         temporal: {} as any,
       }),
@@ -37,12 +41,12 @@ export const useCanvasStore = create<CanvasStore>()(
           const { 
             walls, rooms, openings, roofPanels, 
             electricalPoints, plumbingPoints, 
-            mepConfig, boqConfig, stories, staircases
+            mepConfig, boqConfig, stories, staircases, structureElements
           } = state
           return { 
             walls, rooms, openings, roofPanels, 
             electricalPoints, plumbingPoints, 
-            mepConfig, boqConfig, stories, staircases
+            mepConfig, boqConfig, stories, staircases, structureElements
           }
         },
         equality: (a, b) => JSON.stringify(a) === JSON.stringify(b) // Deep comparison for history
@@ -77,7 +81,8 @@ export const useCanvasStore = create<CanvasStore>()(
         viewport: state.viewport,
         gridSettings: state.gridSettings,
         stories: state.stories,
-        activeStoryId: state.activeStoryId
+        activeStoryId: state.activeStoryId,
+        structureElements: state.structureElements
       }),
     }
   )

@@ -1,4 +1,5 @@
 import { BOQItem, BOQCalculationInput } from './types'
+import { PlumbingCalculator } from '../mep-routing/PlumbingCalculator'
 
 export const calculatePlumbing = (
     points: NonNullable<BOQCalculationInput['plumbingPoints']> = [],
@@ -6,22 +7,13 @@ export const calculatePlumbing = (
 ): BOQItem[] => {
     const items: BOQItem[] = []
     
-    // 1. Count Points
-    const counts: Record<string, number> = {}
-    let sourcePoint = null
+    const calc = PlumbingCalculator.calculate(points, config)
     
-    points.forEach(p => {
-        counts[p.type] = (counts[p.type] || 0) + 1
-        if (p.isSource) sourcePoint = p
-    })
-    
-    // Add point items
-    Object.entries(counts).forEach(([type, count]) => {
-        let name = 'Unknown Plumbing Item'
-        const unit = 'No.'
-        const category = 'Plumbing'
-        
-        switch(type) {
+    // 1. Fixtures
+    Object.entries(calc.points).forEach(([type, count]) => {
+         let name = 'Unknown Plumbing Item'
+         
+         switch(type) {
             case 'basin': name = 'Basin Mixer & Waste'; break;
             case 'sink': name = 'Kitchen Sink Mixer & Waste'; break;
             case 'shower': name = 'Shower Rose & Mixer'; break;
@@ -35,56 +27,69 @@ export const calculatePlumbing = (
             id: `plumb-${type}`,
             item: name,
             quantity: count,
-            unit,
-            category,
+            unit: 'No.',
+            category: 'Plumbing',
             rate: 0
         })
     })
     
-    // 2. Calculate Piping
-    if (sourcePoint) {
-        let totalPipeLength = 0
+    // 2. Piping
+    if (calc.pipeLengthCold > 0 || calc.pipeLengthHot > 0) {
+        const pipeName = config.pipeType === 'copper' ? 'Copper Pipe' : 'PEX Pipe'
         
-        // Simple star topology estimation
-        points.forEach(p => {
-            if (p.id === sourcePoint!.id) return
-            
-            const dist = Math.sqrt(
-                Math.pow(p.position.x - sourcePoint!.position.x, 2) + 
-                Math.pow(p.position.y - sourcePoint!.position.y, 2)
-            ) / 1000 // mm to m
-            
-            // Add vertical runs (average 1.5m per point)
-            const run = dist + 1.5
-            
-            totalPipeLength += run
-        })
+        if (calc.pipeLengthCold > 0) {
+            items.push({
+                id: 'plumb-pipe-cold',
+                item: `${pipeName} (Cold Water Supply)`,
+                quantity: Math.ceil(calc.pipeLengthCold),
+                unit: 'm',
+                category: 'Plumbing',
+                rate: 0
+            })
+        }
         
-        // Add 10% waste
-        totalPipeLength *= 1.1
-        
-        const pipeName = config.pipeType === 'copper' ? 'Copper Pipe 15mm/22mm' : 
-                         config.pipeType === 'pex' ? 'PEX Pipe 15mm' : 'PVC Pipe 50mm/110mm'
-        
+        if (calc.pipeLengthHot > 0) {
+            items.push({
+                id: 'plumb-pipe-hot',
+                item: `${pipeName} (Hot Water Supply)`,
+                quantity: Math.ceil(calc.pipeLengthHot),
+                unit: 'm',
+                category: 'Plumbing',
+                rate: 0
+            })
+             items.push({
+                id: 'plumb-pipe-insulation',
+                item: `Pipe Insulation (Hot Lines)`,
+                quantity: Math.ceil(calc.pipeLengthHot),
+                unit: 'm',
+                category: 'Plumbing',
+                rate: 0
+            })
+        }
+    }
+    
+    if (calc.pipeLengthWaste > 0) {
         items.push({
-            id: 'plumb-pipe',
-            item: pipeName,
-            quantity: Math.ceil(totalPipeLength),
+            id: 'plumb-pipe-waste',
+            item: `PVC Waste Pipe 40mm/50mm`,
+            quantity: Math.ceil(calc.pipeLengthWaste),
             unit: 'm',
-            category: 'Plumbing',
-            rate: 0
-        })
-        
-        // Estimate fittings (approx 4 per point)
-        items.push({
-            id: 'plumb-fittings',
-            item: 'Assorted Fittings (Elbows, Tees, Connectors)',
-            quantity: points.length * 4,
-            unit: 'No.',
             category: 'Plumbing',
             rate: 0
         })
     }
     
+    // 3. Fittings
+    if (calc.fittings > 0) {
+        items.push({
+            id: 'plumb-fittings',
+            item: 'Assorted Fittings (Elbows, Tees, Connectors)',
+            quantity: calc.fittings,
+            unit: 'No.',
+            category: 'Plumbing',
+            rate: 0
+        })
+    }
+
     return items
 }

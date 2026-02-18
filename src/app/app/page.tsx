@@ -4,16 +4,19 @@ import React, { useState } from 'react'
 import { CanvasStage } from "@/modules/canvas/presentation/components"
 import { BOQPanel } from "@/modules/boq/presentation/components/BOQPanel"
 import { BOQConfigPanel } from "@/modules/boq/presentation/components/BOQConfigPanel"
-import { PropertiesPanel } from "@/modules/canvas/presentation/components/ui/PropertiesPanel"
+import { PropertiesPanel } from "@/modules/canvas/presentation/components/PropertiesPanel"
 import { Menu, X, Settings, FileText, LogOut } from 'lucide-react'
 import { useSession, signOut } from 'next-auth/react'
-import { useCanvasStore } from '@/modules/canvas/application/store'
+import { useGeometryStore } from '@/application/store/geometryStore'
 
 export default function AppPage() {
   const { data: session } = useSession()
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [activeTab, setActiveTab] = useState<'properties' | 'boq'>('properties')
-  const { boqConfig, updateBOQConfig } = useCanvasStore()
+  const { boqConfig, updateBoqConfig } = useGeometryStore(state => ({
+    boqConfig: state.project.boqConfig,
+    updateBoqConfig: state.updateBoqConfig
+  }))
 
   return (
     <div className="flex h-screen w-screen bg-slate-50">
@@ -101,7 +104,7 @@ export default function AppPage() {
                 <div className="p-4 space-y-4">
                   <BOQConfigPanel 
                     config={boqConfig}
-                    onChange={updateBOQConfig}
+                    onChange={updateBoqConfig}
                   />
                   <BOQPanel />
                 </div>

@@ -4,10 +4,10 @@
 import React, { useState, useEffect } from 'react'
 import { CanvasStage } from "@/modules/canvas/presentation/components"
 import { BOQHeaderButton } from "@/modules/boq/presentation/components/BOQHeaderButton"
-import { PropertiesPanel } from "@/modules/canvas/presentation/components/ui/PropertiesPanel"
+import { PropertiesPanel } from "@/modules/canvas/presentation/components/PropertiesPanel"
 import { Menu, X, ArrowLeft, Loader2, CheckCircle, AlertCircle, Save } from 'lucide-react'
 import { useSession } from 'next-auth/react'
-import { useCanvasStore } from '@/modules/canvas/application/store'
+import { useGeometryStore } from '@/application/store/geometryStore'
 import { useShallow } from 'zustand/react/shallow'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
@@ -18,13 +18,13 @@ export default function ProjectEditorPage() {
   const params = useParams()
   const projectId = params.id as string
 
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+
   // Removed activeTab state
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
-  const { loadProject } = useCanvasStore(useShallow(state => ({
-    loadProject: state.loadProject
+  const { setProject } = useGeometryStore(useShallow(state => ({
+    setProject: state.setProject
   })))
   
   // Only enable auto-save after initial load is complete
@@ -51,9 +51,14 @@ export default function ProjectEditorPage() {
                     ? JSON.parse(data.project.geometry) 
                     : data.project.geometry
                 
-                // Only load if geometry is not empty/default
                 if (Object.keys(geometry).length > 0) {
-                    loadProject(geometry)
+                    // Inject metadata from the project record into the geometry state
+                    const meta = {
+                        name: data.project.name || 'Untitled Project',
+                        currency: data.project.country?.currency || 'USD',
+                        currencySymbol: data.project.country?.currencySymbol || '$'
+                    }
+                    setProject({ ...geometry, meta })
                 }
             }
         } catch (err) {
@@ -65,7 +70,7 @@ export default function ProjectEditorPage() {
     }
 
     fetchProject()
-  }, [projectId, loadProject])
+  }, [projectId, setProject])
 
   if (isLoading) {
       return (
@@ -156,29 +161,38 @@ export default function ProjectEditorPage() {
                {session?.user?.name?.[0] || 'U'}
             </div>
           </div>
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors ml-2"
-          >
-            {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
-          </button>
         </div>
       </nav>
 
       {/* Main Content Area */}
-      <div className="flex flex-1 pt-10">
+      <div className="flex flex-1 pt-10 h-full relative overflow-hidden">
         {/* Canvas Area */}
-        <div className="flex-1 relative bg-white">
+        <div className="flex-1 relative bg-white h-full w-full">
           <CanvasStage className="w-full h-full" />
         </div>
 
-        {/* Right Sidebar with Tabs */}
-        {sidebarOpen && (
-          <div className="w-80 bg-white border-l border-slate-200 flex flex-col z-40 shadow-xl h-full">
-            <PropertiesPanel />
-          </div>
-        )}
+        {/* Right Sidebar - Dynamic */}
+        <DynamicPropertiesPanel />
+
       </div>
     </div>
   )
+}
+
+// Wrapper to handle store subscription without re-rendering the whole page too often
+function DynamicPropertiesPanel() {
+    const { selectedIds } = useGeometryStore(useShallow(state => ({
+        selectedIds: state.selectedIds
+    })))
+    
+    // Also use effect to dispatch event for CanvasControls? 
+    // Or CanvasControls can just listen to store too.
+    
+    if (selectedIds.length === 0) return null
+
+    return (
+        <div className="absolute top-10 right-0 bottom-0 w-80 bg-white border-l border-slate-200 flex flex-col z-40 shadow-xl animate-in slide-in-from-right duration-300">
+            <PropertiesPanel />
+        </div>
+    )
 }

@@ -18,6 +18,7 @@ export interface ProjectionSettings {
  * @returns 2D coordinates
  */
 export function projectToPlan(point: Point3D, settings: ProjectionSettings): Point2D {
+  if (!point) return { x: 0, y: 0 }
   // Plan view ignores Z
   // Screen X = (World X * Scale) + Offset X
   // Screen Y = (World Y * Scale) + Offset Y  (Assuming Y-down screen, Y-up world? Need to clarify coord system)

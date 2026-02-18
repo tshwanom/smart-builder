@@ -1,148 +1,167 @@
 /**
  * Foundation Calculator
- * Handles all foundation-related materials (SANS 10400-B)
+ * Handles SANS 10400-H compliant foundation calculations
  */
 
 import { BOQItem } from './types'
+import { FoundationStructure, SoilClass, DesignMode, RebarSpec } from '../../../domain/types'
+import { MaterialDatabase } from '../../../application/services/MaterialDatabase'
+
+const SANS_TABLES = {
+  foundingDepth: {
+    'H1': 750,
+    'H2': 900,
+    'H3': 1200,
+    'H4': 1500,
+    'S': 450,
+    'custom': 0
+  },
+  bearingCapacity: {
+    'H1': 200,
+    'H2': 150,
+    'H3': 100,
+    'H4': 75,
+    'S': 500,
+    'custom': 0
+  },
+  minWidth: 450,
+  minDepth: 300,
+  minConcreteClass: 'conc_20mpa'
+}
 
 export function calculateFoundation(
   wallLength: number,
-  wallThickness: number,
-  depth: number,
-  _floorArea: number
+  structure: FoundationStructure
 ): BOQItem[] {
   const items: BOQItem[] = []
+  
+  // Deterministic parameters based on mode
+  let width = structure.width
+  let depth = structure.depth
+  let excavationDepth = structure.foundingLevel
+  
+  if (structure.designMode === 'standard' && structure.soilClass !== 'custom') {
+    // Enforce SANS minimums in Standard Mode
+    const minDepth = SANS_TABLES.foundingDepth[structure.soilClass]
+    excavationDepth = Math.max(structure.foundingLevel, minDepth)
+    width = Math.max(structure.width, SANS_TABLES.minWidth)
+    depth = Math.max(structure.depth, SANS_TABLES.minDepth)
+  }
 
   // 1. EXCAVATION
-  const foundationWidth = wallThickness + 0.6 // 300mm each side
-  const excavationVolume = wallLength * foundationWidth * depth * 1.2 // 20% extra for working space
+  // Allow 300mm working space either side
+  const excavWidth = (width / 1000) + 0.6 
+  const excavVol = wallLength * excavWidth * (excavationDepth / 1000)
   
   items.push({
     category: 'Foundation - Excavation',
-    item: 'Excavation & Earthworks',
-    quantity: parseFloat(excavationVolume.toFixed(2)),
+    item: `Excavation (${structure.soilClass})`,
+    quantity: parseFloat(excavVol.toFixed(2)),
     unit: 'm³',
-    notes: 'Includes 20% working space'
+    notes: `Depth: ${excavationDepth}mm, Width: ${Math.round(excavWidth*1000)}mm`
   })
 
-  items.push({
-    category: 'Foundation - Excavation',
-    item: 'Disposal of Excavated Material',
-    quantity: parseFloat(excavationVolume.toFixed(2)),
-    unit: 'm³',
-    notes: 'Off-site disposal'
-  })
-
-  // 2. BLINDING LAYER
-  const blindingVolume = wallLength * foundationWidth * 0.05 // 50mm sand
+  // Risk of collapse / cartel logic? (Optional SANS requirement for deep trenches)
+  if (excavationDepth > 1500) {
+    items.push({
+      category: 'Foundation - Safety',
+      item: 'Planking and Strutting',
+      quantity: parseFloat((wallLength * excavationDepth / 1000 * 2).toFixed(2)),
+      unit: 'm²',
+      notes: 'Deep excavation support'
+    })
+  }
+  
+  // 2. CONCRETE
+  const concVol = wallLength * (width / 1000) * (depth / 1000)
+  const waste = 1.05 // 5%
+  const totalConcVol = concVol * waste
+  
+  // Concrete Grade
+  const concGrade = structure.concrete.grade // e.g., '20MPa'
+  const concMatId = `conc_${concGrade.toLowerCase().replace('mpa', 'mpa')}` || 'conc_20mpa'
+  const concMat = MaterialDatabase.getMaterial(concMatId)
   
   items.push({
-    category: 'Foundation - Preparation',
-    item: 'Sand Blinding (50mm)',
-    quantity: parseFloat(blindingVolume.toFixed(2)),
-    unit: 'm³',
-    notes: 'Compacted layer under foundation'
-  })
-
-  // 3. CONCRETE FOUNDATION
-  const foundationVolume = wallLength * foundationWidth * depth
-  const concreteBags = Math.ceil(foundationVolume * 6 * 1.05) // 5% waste
-  const sand = foundationVolume * 0.6 * 1.05
-  const stone = foundationVolume * 0.6 * 1.05
-
-  items.push({
     category: 'Foundation - Concrete',
-    item: 'Cement (50kg bags)',
-    quantity: concreteBags,
-    unit: 'bags',
-    notes: '1:3:6 mix (5% waste included)'
-  })
-
-  items.push({
-    category: 'Foundation - Concrete',
-    item: 'Building Sand',
-    quantity: parseFloat(sand.toFixed(2)),
+    item: concMat ? concMat.name : `Concrete ${concGrade}`,
+    quantity: parseFloat(totalConcVol.toFixed(2)),
     unit: 'm³',
-    notes: '5% waste included'
+    notes: `Width: ${width}mm, Depth: ${depth}mm`
   })
+  
+  // 3. REINFORCEMENT
+  if (structure.reinforcement) {
+    // Bottom Bars
+    if (structure.reinforcement.bottomBars) {
+      calculateRebar(items, wallLength, structure.reinforcement.bottomBars, 'Bottom')
+    }
+    
+    // Top Bars
+    if (structure.reinforcement.topBars) {
+        calculateRebar(items, wallLength, structure.reinforcement.topBars, 'Top')
+    }
+    
+    // Starter Bars
+    if (structure.reinforcement.starterBars) {
+      const spec = structure.reinforcement.starterBars
+      const spacing = spec.spacing || 600
+      const count = Math.ceil(wallLength * 1000 / spacing)
+      const length = spec.length || 600 // mm
+      
+      const barMat = getRebarMaterial(spec.size)
+      if (barMat) {
+         const totalLength = count * (length / 1000)
+         const mass = totalLength * barMat.massPerMeter * 1.05 // 5% waste
+         items.push({
+           category: 'Foundation - Reinforcement',
+           item: `Starter Bars ${spec.size} @ ${spacing}mm`,
+           quantity: parseFloat(mass.toFixed(2)),
+           unit: 'kg',
+           notes: `${count} bars, ${length}mm long`
+         })
+      }
+    }
+  }
 
-  items.push({
-    category: 'Foundation - Concrete',
-    item: 'Stone (19mm)',
-    quantity: parseFloat(stone.toFixed(2)),
-    unit: 'm³',
-    notes: '5% waste included'
-  })
-
-  // 4. STEEL REINFORCEMENT
-  const steelLength = wallLength * 4 // 4 bars per foundation
-  const steelMass = steelLength * 0.888 * 1.1 // Y12 = 0.888 kg/m + 10% waste
-
-  items.push({
-    category: 'Foundation - Steel',
-    item: 'Steel Reinforcement Y12',
-    quantity: parseFloat(steelMass.toFixed(2)),
-    unit: 'kg',
-    notes: '10% waste included'
-  })
-
-  items.push({
-    category: 'Foundation - Steel',
-    item: 'Binding Wire',
-    quantity: parseFloat((steelMass * 0.02).toFixed(2)),
-    unit: 'kg',
-    notes: '2% of steel mass'
-  })
-
-  // 5. STARTER BARS (vertical steel into walls)
-  const starterBars = Math.ceil(wallLength / 0.6) // Every 600mm
-  const starterBarMass = starterBars * 1.2 * 0.888 // 1.2m long Y12 bars
-
-  items.push({
-    category: 'Foundation - Steel',
-    item: 'Starter Bars Y12 (1.2m)',
-    quantity: starterBars,
-    unit: 'units',
-    notes: `Vertical bars @ 600mm spacing (${starterBarMass.toFixed(1)}kg total)`
-  })
-
-  // 6. FORMWORK
-  const formworkArea = wallLength * depth * 2 // Both sides
-
+  // 4. FORMWORK
+  const formworkArea = wallLength * (depth / 1000) * 2 // Both sides
   items.push({
     category: 'Foundation - Formwork',
-    item: 'Timber Formwork',
+    item: 'Timber Formwork to Sides',
     quantity: parseFloat(formworkArea.toFixed(2)),
     unit: 'm²',
-    notes: 'Reusable formwork'
-  })
-
-  items.push({
-    category: 'Foundation - Formwork',
-    item: 'Release Agent/Oil',
-    quantity: parseFloat((formworkArea * 0.1).toFixed(2)),
-    unit: 'liters',
-    notes: '0.1L per m²'
-  })
-
-  // 7. WATERPROOFING
-  const waterproofArea = wallLength * foundationWidth
-
-  items.push({
-    category: 'Foundation - Waterproofing',
-    item: 'Bitumen Waterproofing',
-    quantity: parseFloat(waterproofArea.toFixed(2)),
-    unit: 'm²',
-    notes: 'Applied to foundation exterior'
-  })
-
-  items.push({
-    category: 'Foundation - Waterproofing',
-    item: 'Bitumen Primer',
-    quantity: parseFloat((waterproofArea * 0.15).toFixed(2)),
-    unit: 'liters',
-    notes: '0.15L per m²'
+    notes: 'Sides of strip footing'
   })
 
   return items
+}
+
+function calculateRebar(items: BOQItem[], wallLength: number, spec: RebarSpec, location: string) {
+    const bars = spec.quantity || 2 // Default 2 bars if not specified
+    const totalLength = wallLength * bars
+    
+    const mat = getRebarMaterial(spec.size)
+    if (mat) {
+        // Laps: Allow 50d lap every 6m
+        const laps = Math.ceil(totalLength / 6)
+        const lapLength = (mat.diameter * 50 / 1000) * laps
+        
+        const finalLength = totalLength + lapLength
+        const mass = finalLength * mat.massPerMeter
+        
+        items.push({
+            category: 'Foundation - Reinforcement',
+            item: `${location} Reinforcement ${spec.size}`,
+            quantity: parseFloat(mass.toFixed(2)),
+            unit: 'kg',
+            notes: `${bars} bars, ${spec.spacing ? '@ ' + spec.spacing + 'mm' : ''}`
+        })
+    }
+}
+
+function getRebarMaterial(size: string) {
+    // Map Y12 to rebar_y12
+    const id = `rebar_${size.toLowerCase()}`
+    return MaterialDatabase.getMaterial(id) as import('../../../domain/materialTypes').ReinforcementMaterial | undefined
 }

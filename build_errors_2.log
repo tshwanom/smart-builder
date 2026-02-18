@@ -1,0 +1,166 @@
+src/core/engine/boq-calculators/__tests__/verify_phase5.test.ts(72,15): error TS2741: Property 'structureElements' is missing in type '{ layers: { id: string; name: string; elevation: number; height: number; }[]; walls: WallSegment[]; roofs: never[]; openings: never[]; boqConfig: { roofType: "gable"; roofPitch: number; finishes: { ...; }; }; mepConfig: { ...; }; }' but required in type 'ProjectGeometry'.
+src/core/engine/boq-calculators/__tests__/WallCalculator.test.ts(15,39): error TS2339: Property 'calculateQuantities' does not exist on type '{ calculateThickness: (structure: WallStructure) => number; createDefaultDoubleSkin: () => WallStructure; createDefaultSingleSkin: () => WallStructure; createDefaultDrywall: () => WallStructure; getDescription: (structure: WallStructure) => string; calculateWallItems: (netArea: number, length: number, height: number...'.
+src/core/engine/boq-calculators/__tests__/WallCalculator.test.ts(24,39): error TS2339: Property 'calculateQuantities' does not exist on type '{ calculateThickness: (structure: WallStructure) => number; createDefaultDoubleSkin: () => WallStructure; createDefaultSingleSkin: () => WallStructure; createDefaultDrywall: () => WallStructure; getDescription: (structure: WallStructure) => string; calculateWallItems: (netArea: number, length: number, height: number...'.
+src/core/engine/boq-calculators/__tests__/WallCalculator.test.ts(33,39): error TS2339: Property 'calculateQuantities' does not exist on type '{ calculateThickness: (structure: WallStructure) => number; createDefaultDoubleSkin: () => WallStructure; createDefaultSingleSkin: () => WallStructure; createDefaultDrywall: () => WallStructure; getDescription: (structure: WallStructure) => string; calculateWallItems: (netArea: number, length: number, height: number...'.
+src/core/engine/boq-calculators/__tests__/WallCalculator.test.ts(40,39): error TS2339: Property 'calculateQuantities' does not exist on type '{ calculateThickness: (structure: WallStructure) => number; createDefaultDoubleSkin: () => WallStructure; createDefaultSingleSkin: () => WallStructure; createDefaultDrywall: () => WallStructure; getDescription: (structure: WallStructure) => string; calculateWallItems: (netArea: number, length: number, height: number...'.
+src/core/engine/boq-calculators/__tests__/WallCalculator.test.ts(51,41): error TS2339: Property 'calculateQuantities' does not exist on type '{ calculateThickness: (structure: WallStructure) => number; createDefaultDoubleSkin: () => WallStructure; createDefaultSingleSkin: () => WallStructure; createDefaultDrywall: () => WallStructure; getDescription: (structure: WallStructure) => string; calculateWallItems: (netArea: number, length: number, height: number...'.
+src/core/engine/boq-calculators/foundation.ts(56,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/foundation.ts(66,16): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/foundation.ts(85,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/foundation.ts(116,21): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/foundation.ts(129,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/foundation.ts(153,20): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/misc.ts(16,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/misc.ts(25,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/misc.ts(41,5): error TS2741: Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/misc.ts(48,5): error TS2741: Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(34,16): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(43,16): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(53,18): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(63,20): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(74,16): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(85,18): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(92,18): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(99,18): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(106,18): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(117,18): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(124,18): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(131,18): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(138,18): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(145,18): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(157,18): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(164,18): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(171,18): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(181,19): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(188,18): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(195,18): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(206,19): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(213,18): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(224,18): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(231,18): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(238,18): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(251,18): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(259,18): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(289,16): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(299,19): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/openings.ts(311,16): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(25,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(33,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(41,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(49,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(59,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(70,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(78,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(86,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(94,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(102,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(110,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(118,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(126,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(134,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(142,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(161,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(169,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(177,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(185,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(199,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(207,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(215,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(226,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(234,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(243,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(251,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(259,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(268,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(276,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/roof.ts(285,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/subfloor.ts(36,16): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/subfloor.ts(45,16): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/subfloor.ts(54,16): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/subfloor.ts(64,16): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/subfloor.ts(113,16): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/subfloor.ts(122,16): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/subfloor.ts(146,16): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/walling.ts(33,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/walling.ts(48,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/walling.ts(56,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.
+src/core/engine/boq-calculators/walling.ts(69,14): error TS2345: Argument of type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' is not assignable to parameter of type 'BOQItem'.
+  Property 'rate' is missing in type '{ category: string; item: string; quantity: number; unit: string; notes: string; }' but required in type 'BOQItem'.

@@ -10,15 +10,7 @@ const PaymentButton = dynamic(
   { ssr: false }
 )
 
-interface BOQItem {
-  category: string
-  item: string
-  quantity: number
-  unit: string
-  unitPrice?: number
-  totalPrice?: number
-  notes?: string
-}
+import { BOQItem } from '@/core/engine/boqCalculator'
 
 interface BOQModalProps {
   isOpen: boolean

@@ -11,7 +11,7 @@ export interface PaystackPaymentRef {
   startPayment: () => void
 }
 
-const PaystackPayment = forwardRef<PaystackPaymentRef, PaystackPaymentProps>(({ config, onSuccess, onClose }, ref) => {
+export const PaystackPayment = forwardRef<PaystackPaymentRef, PaystackPaymentProps>(({ config, onSuccess, onClose }, ref) => {
   const initializePayment = usePaystackPayment(config)
 
   useImperativeHandle(ref, () => ({

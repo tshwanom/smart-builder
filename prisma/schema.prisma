@@ -80,8 +80,10 @@ model Project {
   roofs        Roof[]
 
   defaultBrickMaterialId String?
-  defaultBrickMaterial   Material?      @relation("ProjectDefaultBrick", fields: [defaultBrickMaterialId], references: [id])
+  defaultBrickMaterial   Material?            @relation("ProjectDefaultBrick", fields: [defaultBrickMaterialId], references: [id])
   wallTemplates          WallTemplate[]
+  structureElements      StructureElement[]
+  roomFinishSchedules    RoomFinishSchedule[]
 
   @@index([userId])
 }
@@ -301,4 +303,95 @@ model Roof {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId])
+}
+
+model StructureElement {
+  id         String @id @default(cuid())
+  projectId  String
+  type       String // "COLUMN", "BEAM", "SLAB", "FOUNDATION"
+  designMode String @default("STANDARD") // "STANDARD" or "ENGINEER"
+
+  // Geometry
+  points  String // JSON: Start/End points [x,y,z] or Polygon vertices
+  profile String // JSON: { shape: "RECT", dimA: 400, dimB: 400 } or { designation: "IPE200" }
+
+  // Material & Engineering
+  materialId String? // Link to specific Concrete Material
+  mixClass   String? // "30mpa"
+  rebar      String? // JSON: { main: "4Y16", links: "R8-200" }
+
+  // Metadata
+  label     String? // "C1", "B12"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([type])
+}
+
+// Volume 13: Architectural Finishes
+
+model FinishProduct {
+  id       String @id @default(cuid())
+  name     String
+  category String // "FLOOR", "WALL", "CEILING", "TRIM"
+  type     String // "TILE", "PAINT", "LAMINATE", "VINYL", "SKIRTING", "CORNICE"
+
+  // Specifics
+  material String? // "CERAMIC", "PORCELAIN", "TIMBER"
+  finish   String? // "MATT", "GLOSS", "SATIN"
+
+  // Dimensions (mm)
+  length    Float?
+  width     Float?
+  thickness Float?
+
+  // Engineering
+  spreadRate Float? // m2/L (Paint)
+  waste      Float? // Default waste % (e.g. 10.0)
+
+  // Commercial
+  price Float // Base rate
+  unit  String // "m2", "L", "m"
+
+  // JSON metadata
+  specs String? // JSON: { slipRating, voc, etc }
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  schedFloors RoomFinishSchedule[] @relation("FloorFinish")
+  schedWalls  RoomFinishSchedule[] @relation("WallFinish")
+  schedCeils  RoomFinishSchedule[] @relation("CeilingFinish")
+}
+
+model RoomFinishSchedule {
+  id        String @id @default(cuid())
+  projectId String
+  roomId    String
+
+  // Linked Finishes
+  floorFinishId String?
+  floorFinish   FinishProduct? @relation("FloorFinish", fields: [floorFinishId], references: [id])
+
+  wallFinishId String?
+  wallFinish   FinishProduct? @relation("WallFinish", fields: [wallFinishId], references: [id])
+
+  ceilingFinishId String?
+  ceilingFinish   FinishProduct? @relation("CeilingFinish", fields: [ceilingFinishId], references: [id])
+
+  // Detailed Config (Feature walls, Skirting, Cornice)
+  specifications String? // JSON
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, roomId])
+  @@index([projectId])
+  @@index([roomId])
 }

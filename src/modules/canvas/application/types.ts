@@ -1,3 +1,5 @@
+import { StructureElementDomain } from '@/modules/structure/domain/StructureTypes'
+
 export interface Point {
   x: number
   y: number
@@ -55,6 +57,12 @@ export interface Wall {
   roofBehavior?: 'hip' | 'gable' | 'none' // Default 'hip'
   roofPitch?: number // Override global pitch if set
   roofOverhang?: number // Override global overhang (in mm) if set
+  
+  // Volume IX: Material-Based Construction
+  construction?: import('../domain/wall/WallTypes').WallConstruction
+
+  // Story Height Control
+  heightMode?: 'default' | 'custom' // 'default' means linked to story height
 }
 
 export interface Room {
@@ -136,16 +144,32 @@ export interface RoofPanel {
 
 export type ElectricalRoutingMode = 'ceiling' | 'floor'
 
+// Volume 14: MEP Engineering Types
+
+export interface Circuit {
+  id: string
+  name: string
+  breakerAmps: 10 | 20 | 32 | 40 | 63
+  phase: 'Red' | 'White' | 'Blue' | 'Single'
+  cableSize: '1.5mm' | '2.5mm' | '4mm' | '6mm' | '10mm'
+}
+
 export interface ElectricalPoint {
   id: string
-  type: 'socket' | 'switch' | 'light' | 'isolator' | 'db'
+  type: 'socket' | 'switch' | 'light' | 'isolator' | 'db_board'
   subtype?: 'single' | 'double' | 'way2' | 'usb' | 'isolator_switch' // etc
   position: Point
   wallId?: string // If attached to a wall
   storyId?: string
   roomId?: string // Context for automation
   height: number // mm from FFL
-  isDB?: boolean
+  isDB?: boolean // Legacy flag, try use type='db_board'
+
+  // Engineering Data (Vol 14)
+  circuitId?: string
+  loadInWatts?: number
+  phase?: 'Red' | 'White' | 'Blue' | 'Single'
+  mountingHeight?: number // AFL (duplicate of height, normalize later)
 }
 
 export interface PlumbingPoint {
@@ -160,34 +184,21 @@ export interface PlumbingPoint {
   storyId?: string
   height?: number
   isSource?: boolean
+  
+  // Engineering Data (Vol 14)
+  reqFlow?: number // L/min
+  reqTemp?: 'cold' | 'hot' | 'balanced'
+  pipeDiameter?: 15 | 22 | 28 | 32
 }
 
-export interface Staircase {
+export interface HVACPoint {
   id: string
-  type: 'straight' | 'l-shape' | 'u-shape' | 'spiral'
-  
-  // Positioning
-  position: Point // Base start point
-  rotation: number // degrees
-  storyId?: string // The story it starts ON
-  topStoryId?: string // The story it connects TO
-  
-  // Dimensions
-  width: number
-  totalRise: number // Calculated from story heights
-  
-  // Configuration
-  riserHeight?: number // Target/Actual
-  treadDepth: number
-  
-  // Specifics
-  landingDepth?: number // For L/U shapes
-  innerRadius?: number // For Spiral
-  direction: 'left' | 'right' // Turn direction
-  
-  // Construction
-  material: 'concrete' | 'timber' | 'steel'
-  hasRailing: boolean
+  type: 'split_indoor' | 'split_outdoor' | 'duct_grille' | 'thermostat'
+  position: Point
+  wallId?: string
+  storyId?: string
+  btu?: number // e.g., 9000, 12000, 18000
+  pipingLength?: number // Calculated
 }
 
 export interface MEPConfig {
@@ -198,11 +209,34 @@ export interface MEPConfig {
     voltage: number // 230V
     conduitType: 'pvc' | 'bosal'
     wireType: 'house_wire' | 'surfix'
+    supplyType?: 'single_phase' | 'three_phase'
   }
   plumbing: {
     supplyType: 'municipal' | 'tank'
     pipeType: 'copper' | 'pex' | 'polycop' | 'pvc'
+    pressure?: number // kPa
   }
+  hvac?: {
+     defaultBrand?: string
+  }
+}
+
+export interface Staircase {
+  id: string
+  type: 'straight' | 'l-shape' | 'u-shape' | 'spiral'
+  position: Point 
+  rotation: number
+  storyId?: string 
+  topStoryId?: string 
+  width: number
+  totalRise: number 
+  riserHeight?: number 
+  treadDepth: number
+  landingDepth?: number 
+  innerRadius?: number 
+  direction: 'left' | 'right' 
+  material: 'concrete' | 'timber' | 'steel'
+  hasRailing: boolean
 }
 
 export interface BOQConfig {
@@ -223,6 +257,7 @@ export interface ProjectData {
   roofPanels: RoofPanel[]
   electricalPoints: ElectricalPoint[]
   plumbingPoints: PlumbingPoint[]
+  hvacPoints?: HVACPoint[]
   mepConfig: MEPConfig
   boqConfig: BOQConfig
   viewport?: {
@@ -236,4 +271,6 @@ export interface ProjectData {
   showRoof?: boolean
   showRoofSlopeArrows?: boolean
   roofArrowOffset?: number
+  
+  structureElements: StructureElementDomain[]
 }

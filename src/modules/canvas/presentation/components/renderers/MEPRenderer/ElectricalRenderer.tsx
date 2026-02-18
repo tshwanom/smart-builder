@@ -12,7 +12,7 @@ export const ElectricalRenderer: React.FC<ElectricalRendererProps> = ({
   activeElectricalPoints, 
   rooms 
 }) => {
-  const dbPoint = activeElectricalPoints.find(p => p.type === 'db')
+  const dbPoint = activeElectricalPoints.find(p => p.type === 'db_board')
 
   // Calculate Routes Memoized
   const electricalRoutes = useMemo(() => {
@@ -45,7 +45,7 @@ export const ElectricalRenderer: React.FC<ElectricalRendererProps> = ({
             // Add drag handler logic here if needed (passed from parent or store)
         >
            {/* Visual Representation */}
-           {point.type === 'db' ? (
+           {point.type === 'db_board' ? (
                <Group>
                    <Circle radius={0.15} fill="#dc2626" stroke="white" strokeWidth={0.02} />
                    <Text 

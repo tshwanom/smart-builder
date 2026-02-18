@@ -2,7 +2,7 @@ import { Point, Room } from '../../modules/canvas/application/types'
 
 export interface ElectricalPoint {
   id: string
-  type: 'db' | 'socket' | 'switch' | 'light' | 'isolator'
+  type: 'db_board' | 'socket' | 'switch' | 'light' | 'isolator'
   position: Point
 }
 
@@ -51,7 +51,7 @@ export const calculateElectricalRouting = (
         const switches = groupPoints.filter(p => p.type === 'switch')
         const sockets = groupPoints.filter(p => p.type === 'socket')
         const isolators = groupPoints.filter(p => p.type === 'isolator')
-        const dbInGroup = groupPoints.find(p => p.type === 'db')
+        const dbInGroup = groupPoints.find(p => p.type === 'db_board')
 
         // --- LIGHTING ---
         // 1. Group lights by nearest switch IN THIS GROUP

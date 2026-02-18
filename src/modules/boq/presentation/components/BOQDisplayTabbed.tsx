@@ -3,15 +3,7 @@
 import React, { useState } from 'react'
 import { Package, Hammer, Home, Layers, Paintbrush } from 'lucide-react'
 
-interface BOQItem {
-  category: string
-  item: string
-  quantity: number
-  unit: string
-  unitPrice?: number
-  totalPrice?: number
-  notes?: string
-}
+import { BOQItem } from '@/core/engine/boqCalculator'
 
 interface BOQDisplayTabbedProps {
   boq: BOQItem[]

@@ -1,12 +1,13 @@
 import { StateCreator } from 'zustand'
 import { CanvasStore } from '../storeTypes'
-import { ElectricalPoint, PlumbingPoint, MEPConfig } from '../types'
+import { ElectricalPoint, PlumbingPoint, HVACPoint, MEPConfig } from '../types'
 import { MEPSlice } from './interfaces'
 import { generateId } from '../utils'
 
 export const createMEPSlice: StateCreator<CanvasStore, [], [], MEPSlice> = (set, get) => ({
   electricalPoints: [],
   plumbingPoints: [],
+  hvacPoints: [],
   mepConfig: {
     hasCompletedWizard: false,
     electrical: {
@@ -22,7 +23,7 @@ export const createMEPSlice: StateCreator<CanvasStore, [], [], MEPSlice> = (set,
     }
   },
 
-  addElectricalPoint: (point) => set((state) => ({
+  addElectricalPoint: (point: Omit<ElectricalPoint, 'id'>) => set((state) => ({
     electricalPoints: [...state.electricalPoints, { ...point, id: generateId() }]
   })),
 
@@ -34,7 +35,7 @@ export const createMEPSlice: StateCreator<CanvasStore, [], [], MEPSlice> = (set,
     electricalPoints: state.electricalPoints.filter(p => p.id !== id)
   })),
 
-  addPlumbingPoint: (point) => set((state) => ({
+  addPlumbingPoint: (point: Omit<PlumbingPoint, 'id'>) => set((state) => ({
     plumbingPoints: [...state.plumbingPoints, { ...point, id: generateId() }]
   })),
 
@@ -46,7 +47,19 @@ export const createMEPSlice: StateCreator<CanvasStore, [], [], MEPSlice> = (set,
     plumbingPoints: state.plumbingPoints.filter(p => p.id !== id)
   })),
 
-  updateMEPConfig: (config) => set((state) => {
+  addHVACPoint: (point: Omit<HVACPoint, 'id'>) => set((state) => ({
+    hvacPoints: [...state.hvacPoints, { ...point, id: generateId() }]
+  })),
+
+  updateHVACPoint: (id: string, updates: Partial<HVACPoint>) => set((state) => ({
+    hvacPoints: state.hvacPoints.map(p => p.id === id ? { ...p, ...updates } : p)
+  })),
+
+  deleteHVACPoint: (id: string) => set((state) => ({
+    hvacPoints: state.hvacPoints.filter(p => p.id !== id)
+  })),
+
+  updateMEPConfig: (config: any) => set((state) => {
     // Handle deep merge for nested config objects
     const newConfig = { ...state.mepConfig }
     
@@ -54,6 +67,8 @@ export const createMEPSlice: StateCreator<CanvasStore, [], [], MEPSlice> = (set,
         newConfig.electrical = { ...newConfig.electrical, ...config.electrical }
     } else if ('plumbing' in config) {
         newConfig.plumbing = { ...newConfig.plumbing, ...config.plumbing }
+    } else if ('hvac' in config) {
+        newConfig.hvac = { ...newConfig.hvac, ...config.hvac }
     } else {
          // shallow merge for top level props (like hasCompletedWizard)
          Object.assign(newConfig, config)

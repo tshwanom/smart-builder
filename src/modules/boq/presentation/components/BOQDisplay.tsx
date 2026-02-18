@@ -97,7 +97,7 @@ export const BOQDisplay: React.FC<BOQDisplayProps> = ({
   // Get effective price (user override or default)
   const getEffectivePrice = React.useCallback((item: BOQItem) => {
       const key = getItemKey(item)
-      return userRates[key] !== undefined ? userRates[key] : (item.unitPrice || 0)
+      return userRates[key] !== undefined ? userRates[key] : (item.rate || 0)
   }, [userRates, getItemKey])
 
   // Get effective total (quantity * effective price)

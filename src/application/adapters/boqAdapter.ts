@@ -58,6 +58,12 @@ export function adaptGeometryToBOQInput(geometry: ProjectGeometry): Partial<BOQC
     floorArea: 0, 
     openings: mappedOpenings,
     roofType,
-    roofPitch: avgPitch
+    roofPitch: avgPitch,
+    
+    // Volume 14: MEP Mapping
+    electricalPoints: geometry.electricalPoints,
+    plumbingPoints: geometry.plumbingPoints,
+    hvacPoints: geometry.hvacPoints,
+    mepConfig: geometry.mepConfig
   }
 }

@@ -1,141 +1,153 @@
 /**
  * Subfloor Calculator
- * Handles ground floor slab construction (SANS 10400-B)
+ * Handles SANS 10400-H compliant subfloor calculations
  */
 
 import { BOQItem } from './types'
+import { SubfloorStructure } from '../../../domain/types'
+import { MaterialDatabase } from '../../../application/services/MaterialDatabase'
 
-export function calculateSubfloor(floorArea: number): BOQItem[] {
+export function calculateSubfloor(
+  floorArea: number,
+  structure: SubfloorStructure
+): BOQItem[] {
   const items: BOQItem[] = []
-
-  // 1. HARDCORE FILL (150mm compacted stone)
-  const hardcoreVolume = floorArea * 0.15 * 1.25 // 25% compaction factor
-
-  items.push({
-    category: 'Subfloor - Fill',
-    item: 'Hardcore Fill (150mm compacted)',
-    quantity: parseFloat(hardcoreVolume.toFixed(2)),
-    unit: 'm³',
-    notes: '25% compaction allowance included'
-  })
-
-  items.push({
-    category: 'Subfloor - Fill',
-    item: 'Compaction (Mechanical)',
-    quantity: parseFloat(floorArea.toFixed(2)),
-    unit: 'm²',
-    notes: 'Plate compactor required'
-  })
-
-  // 2. BLINDING SAND (50mm)
-  const blindingSand = floorArea * 0.05
-
-  items.push({
-    category: 'Subfloor - Preparation',
-    item: 'Blinding Sand (50mm)',
-    quantity: parseFloat(blindingSand.toFixed(2)),
-    unit: 'm³',
-    notes: 'Over hardcore'
-  })
-
-  // 3. DPC MEMBRANE (under slab)
-  const dpcArea = floorArea * 1.1 // 10% overlap
-
-  items.push({
-    category: 'Subfloor - DPC',
-    item: 'DPC Membrane (375 micron)',
-    quantity: parseFloat(dpcArea.toFixed(2)),
-    unit: 'm²',
-    notes: '10% overlap included (SANS 10400-C)'
-  })
-
-  items.push({
-    category: 'Subfloor - DPC',
-    item: 'DPC Tape/Jointing',
-    quantity: Math.ceil(Math.sqrt(floorArea) * 4 * 1.1),
-    unit: 'm',
-    notes: 'For sealing DPC joints'
-  })
-
-  // 4. CONCRETE SLAB (100mm)
-  const slabThickness = 0.1
-  const concreteVolume = floorArea * slabThickness
-  const cementBags = Math.ceil(concreteVolume * 6 * 1.05)
-  const sand = concreteVolume * 0.6 * 1.05
-  const stone = concreteVolume * 0.6 * 1.05
-
-  items.push({
-    category: 'Subfloor - Concrete Slab',
-    item: 'Cement (50kg bags)',
-    quantity: cementBags,
-    unit: 'bags',
-    notes: '1:3:6 mix for 100mm slab (5% waste)'
-  })
-
-  items.push({
-    category: 'Subfloor - Concrete Slab',
-    item: 'Building Sand',
-    quantity: parseFloat(sand.toFixed(2)),
-    unit: 'm³',
-    notes: '5% waste included'
-  })
-
-  items.push({
-    category: 'Subfloor - Concrete Slab',
-    item: 'Stone (19mm)',
-    quantity: parseFloat(stone.toFixed(2)),
-    unit: 'm³',
-    notes: '5% waste included'
-  })
-
-  // 5. STEEL MESH
-  const meshArea = floorArea * 1.1 // 10% overlap
-
-  items.push({
-    category: 'Subfloor - Reinforcement',
-    item: 'BRC Mesh A193',
-    quantity: parseFloat(meshArea.toFixed(2)),
-    unit: 'm²',
-    notes: '10% overlap included'
-  })
-
-  items.push({
-    category: 'Subfloor - Reinforcement',
-    item: 'Mesh Chairs/Spacers',
-    quantity: Math.ceil(floorArea / 2),
-    unit: 'units',
-    notes: '1 per 2m²'
-  })
-
-  // 6. CURING
-  items.push({
-    category: 'Subfloor - Curing',
-    item: 'Curing Compound',
-    quantity: parseFloat((floorArea * 0.2).toFixed(2)),
-    unit: 'liters',
-    notes: '0.2L per m²'
-  })
-
-  // 7. SCREED (50mm) - Optional top layer
-  const screedVolume = floorArea * 0.05
-  const screedCement = Math.ceil(screedVolume * 8) // Richer mix for screed
-  const screedSand = screedVolume * 1.05
-
-  items.push({
-    category: 'Subfloor - Screed',
-    item: 'Cement for Screed (50kg bags)',
-    quantity: screedCement,
-    unit: 'bags',
-    notes: '1:4 mix for 50mm screed'
-  })
-
-  items.push({
-    category: 'Subfloor - Screed',
-    item: 'Plaster Sand for Screed',
-    quantity: parseFloat(screedSand.toFixed(2)),
-    unit: 'm³',
-    notes: '5% waste included'
-  })
+  
+  // 1. Common: Surface Bed / Topping
+  // If beam & block or hollow core, we usually have a structural topping (e.g. 50-75mm)
+  // If slab on ground, it's the main slab (e.g. 100mm)
+  
+  if (structure.type === 'slab_on_ground') {
+      calculateSlabOnGround(items, floorArea, structure)
+  } else if (structure.type === 'beam_and_block') {
+      calculateBeamAndBlock(items, floorArea, structure)
+  } else if (structure.type === 'hollow_core') {
+      calculateHollowCore(items, floorArea, structure)
+  }
 
   return items
+}
+
+function calculateSlabOnGround(items: BOQItem[], area: number, structure: SubfloorStructure) {
+    const thickness = structure.slab?.thickness || 100
+    const vol = area * (thickness / 1000)
+    
+    // 1. Hardcore Fill
+    items.push({
+        category: 'Subfloor - Fill',
+        item: 'Hardcore Fill (G5)',
+        quantity: parseFloat((area * 0.15 * 1.3).toFixed(2)), // 150mm compacted
+        unit: 'm³',
+        notes: 'Includes compaction factor'
+    })
+    
+    // 2. DPM
+    items.push({
+        category: 'Subfloor - DPM',
+        item: 'DPM 250 micron',
+        quantity: parseFloat(area.toFixed(2)),
+        unit: 'm²',
+        notes: 'Under surface bed'
+    })
+    
+    // 3. Concrete
+    items.push({
+        category: 'Subfloor - Concrete',
+        item: `Surface Bed Concrete ${thickness}mm`,
+        quantity: parseFloat(vol.toFixed(2)),
+        unit: 'm³',
+        notes: '25MPa'
+    })
+    
+    // 4. Mesh
+    const meshRef = structure.slab?.meshRef || 'Ref 193'
+    items.push({
+        category: 'Subfloor - Reinforcement',
+        item: `${meshRef} Mesh`,
+        quantity: parseFloat((area * 1.1).toFixed(2)), // 10% lap
+        unit: 'm²',
+        notes: 'Includes 10% laps'
+    })
+}
+
+function calculateBeamAndBlock(items: BOQItem[], area: number, structure: SubfloorStructure) {
+    // Assumptions for estimation:
+    // Beams are spaced at e.g. 600mm centers (standard for 440 blocks + 110 beams = 550?)
+    // Actually block is 440 wide. Beam is 110 wide usually inverted T.
+    // Center spacing = 440 + ~60 = 500mm or similar. 
+    // Let's rely on config spacing.
+    
+    const spacing = structure.beamAndBlock?.beamSpacing || 600
+    const beamLengthTotal = (area / (spacing / 1000)) 
+    
+    // 1. Beams
+    items.push({
+        category: 'Subfloor - Structure',
+        item: 'Prestressed Concrete Beams 150mm',
+        quantity: parseFloat(beamLengthTotal.toFixed(2)),
+        unit: 'm',
+        rate: 180, // From DB
+        notes: `Spacing: ${spacing}mm c/c`
+    })
+    
+    // 2. Blocks
+    // Blocks cover the area between beams.
+    // Roughly 90% of area is blocks (minus beam widths)
+    // Block size 440x215. Area = 0.095m2 each.
+    // Roughly 10 blocks per m2.
+    const blocks = Math.ceil(area * 10.5) // 10.5 blocks per m2 standard
+    
+    items.push({
+        category: 'Subfloor - Structure',
+        item: 'Hollow Concrete Blocks 440x215x110',
+        quantity: blocks,
+        unit: 'No',
+        rate: 14,
+        notes: 'Infill blocks'
+    })
+    
+    // 3. Topping concrete (structural texturing)
+    const toppingThick = 50 // mm
+    const toppingVol = area * (toppingThick / 1000)
+    
+    items.push({
+        category: 'Subfloor - Topping',
+        item: `Concrete Topping ${toppingThick}mm`,
+        quantity: parseFloat(toppingVol.toFixed(2)),
+        unit: 'm³',
+        notes: '20MPa Monolithic'
+    })
+    
+    // 4. Mesh in topping
+    items.push({
+        category: 'Subfloor - Topping',
+        item: 'Ref 100 Mesh',
+        quantity: parseFloat((area * 1.1).toFixed(2)),
+        unit: 'm²',
+        notes: 'Topping reinforcement'
+    })
+}
+
+function calculateHollowCore(items: BOQItem[], area: number, structure: SubfloorStructure) {
+    // 1. Slabs
+    items.push({
+        category: 'Subfloor - Structure',
+        item: 'Hollow Core Slabs 150mm',
+        quantity: parseFloat(area.toFixed(2)),
+        unit: 'm²',
+        rate: 850,
+        notes: 'Supply and Install'
+    })
+    
+    // 2. Structural Screed / Topping
+    const toppingThick = 40 // mm
+    const toppingVol = area * (toppingThick / 1000)
+    
+    items.push({
+        category: 'Subfloor - Topping',
+        item: `Structural Screed ${toppingThick}mm`,
+        quantity: parseFloat(toppingVol.toFixed(2)),
+        unit: 'm³',
+        notes: 'Levelling screed'
+    })
 }
